@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-alt: #F1F5F9;
+  --bg-input: #FFFFFF;
+  --border: #E5E7EB;
+
+  --text-1: #111827;
+  --text-2: #4B5563;
+  --text-3: #6B7280;
+  --text-4: #9CA3AF;
+
+  --bg-deep: #0F172A;
+}
+
+.dark {
+  --bg: #0F172A;
+  --bg-card: #1F2937;
+  --bg-alt: #1E293B;
+  --bg-input: #1E293B;
+  --border: #374151;
+
+  --text-1: #F9FAFB;
+  --text-2: #D1D5DB;
+  --text-3: #9CA3AF;
+  --text-4: #6B7280;
+
+  --bg-deep: #05070c;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

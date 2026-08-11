@@ -1,6 +1,24 @@
+from django.conf import settings
 from rest_framework import serializers
 from apps.products.models import Product
 from apps.core.validators import validate_image_upload
+
+
+def _resolve_image_url(obj, request):
+    """
+    Product.display_image can be one of three things:
+      1. An uploaded file's MEDIA_URL path (served BY this Django backend)
+         -> must be absolutized against the API's own domain.
+      2. A plain '/images/...' path meaning "lives in the React app's own
+         public/ folder" (e.g. seed data) -> must be left exactly as-is,
+         so the browser resolves it against the FRONTEND's origin, not
+         the API's. Absolutizing this against the backend would 404.
+      3. A full external URL (https://...) -> left as-is either way.
+    """
+    url = obj.display_image
+    if request and url.startswith(settings.MEDIA_URL):
+        return request.build_absolute_uri(url)
+    return url
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -19,11 +37,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
 
     def get_display_image(self, obj):
-        request = self.context.get('request')
-        url = obj.display_image
-        if request and url.startswith('/'):
-            return request.build_absolute_uri(url)
-        return url
+        return _resolve_image_url(obj, self.context.get('request'))
 
 
 class ProductDetailSerializer(ProductListSerializer):
@@ -48,11 +62,7 @@ class ProductAdminSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at']
 
     def get_display_image(self, obj):
-        request = self.context.get('request')
-        url = obj.display_image
-        if request and url.startswith('/'):
-            return request.build_absolute_uri(url)
-        return url
+        return _resolve_image_url(obj, self.context.get('request'))
 
     def validate_name(self, value):
         value = value.strip()

@@ -11,6 +11,7 @@ muddo_project/settings.py      <- replaces template-era settings
 muddo_project/urls.py          <- replaces template-era urls
 requirements.txt               <- adds DRF/JWT/CORS/Postgres deps
 .env.example                   <- new
+apps/core/management/commands/seed_data.py  <- UPDATED (see note below)
 apps/core/permissions.py       <- new
 apps/core/exceptions.py        <- new
 apps/core/validators.py        <- new
@@ -46,9 +47,18 @@ apps/analytics/urls_api.py     <- new
 - Every `migrations/*.py` file (all 8 apps) — this is your schema history
   and, once you have real Supabase data, your data history too
 - `apps/*/admin.py`, `apps/*/apps.py` — unchanged, Django admin still works
-- `apps/core/management/commands/seed_data.py`, `dedupe_products.py`,
-  `verify_distributor_locations.py` — unchanged, still run via
-  `python manage.py seed_data` etc.
+- `apps/core/management/commands/dedupe_products.py`,
+  `verify_distributor_locations.py` — unchanged
+- **`apps/core/management/commands/seed_data.py` is the ONE exception —
+  this package's copy REPLACES yours.** The only change is that every
+  product's `img` path now reads `/images/...` instead of
+  `/static/images/...`, because that path now has to resolve against the
+  React frontend's own origin (which serves files from
+  `frontend/public/images/`), not against Django. If you've customized
+  this file since the original zip (added products, changed stock
+  numbers, etc.), diff it against your version and carry your changes
+  over rather than blindly overwriting — the only structural change is
+  that one `/static/` → removal.
 - `apps/core/context_processors.py`, `apps/core/templatetags/*` — no
   longer wired into `TEMPLATES`, safe to leave in place or delete later;
   not deleted now since you said "don't delete without asking"

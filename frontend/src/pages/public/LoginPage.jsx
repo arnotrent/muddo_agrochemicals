@@ -1,7 +1,14 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../../components/Icon'
+
+const SLIDES = [
+  { icon: 'bug', tag: 'Pesticides', img: '/images/hero_pesticides.jpg', title: 'Protection that actually holds up in the field.', desc: 'Broad-spectrum insecticides trusted by farmers across all four regions of Uganda.' },
+  { icon: 'seedling', tag: 'Herbicides', img: '/images/hero_herbicides.jpg', title: 'Clear the weeds, keep the crop.', desc: 'Selective and non-selective control for even the most stubborn Couch and Kikuyu grass.' },
+  { icon: 'microscope', tag: 'Fungicides', img: '/images/hero_fungicides.jpg', title: "Built for Uganda's humidity.", desc: 'Protective and curative fungicides that hold up against blight and mildew season after season.' },
+  { icon: 'boxes', tag: 'Fertilizers & Equipment', img: '/images/hero_fertilizers.jpg', title: 'Everything else the farm needs.', desc: 'From basal fertilizer to a dependable knapsack sprayer — genuine, in stock, MAAIF-registered.' },
+]
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
@@ -9,9 +16,15 @@ export default function LoginPage() {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [slide, setSlide] = useState(0)
   const { login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+
+  useEffect(() => {
+    const t = setInterval(() => setSlide((s) => (s + 1) % SLIDES.length), 4500)
+    return () => clearInterval(t)
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -31,21 +44,34 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen grid lg:grid-cols-[1.1fr_1fr] bg-bg">
       <div className="hidden lg:block relative overflow-hidden bg-bg-deep">
-        <div
-          className="absolute inset-0 flex items-end p-14 bg-cover bg-center"
-          style={{ backgroundImage: "linear-gradient(180deg, rgba(15,23,42,.25) 0%, rgba(15,23,42,.9) 100%), url('/images/hero_pesticides.jpg')" }}
-        >
-          <div className="relative z-10 text-white">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-blue/15 border border-accent-blue/35 text-accent-blue text-xs font-bold uppercase tracking-wide mb-3.5">
-              <Icon name="shield-alt" />Staff Portal
+        {SLIDES.map((s, i) => (
+          <div
+            key={s.tag}
+            className={`absolute inset-0 flex items-end p-14 bg-cover bg-center transition-opacity duration-1000 ${i === slide ? 'opacity-100' : 'opacity-0'}`}
+            style={{ backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.25) 0%, rgba(15,23,42,.9) 100%), url('${s.img}')` }}
+          >
+            <div className="relative z-10 text-white">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-blue/15 border border-accent-blue/35 text-accent-blue text-xs font-bold uppercase tracking-wide mb-3.5">
+                <Icon name={s.icon} />{s.tag}
+              </div>
+              <h2 className="text-4xl font-bold mb-2.5 leading-tight">{s.title}</h2>
+              <p className="text-white/78 max-w-[40ch] leading-relaxed">{s.desc}</p>
             </div>
-            <h2 className="text-4xl font-bold mb-2.5 leading-tight">Protection that actually holds up in the field.</h2>
-            <p className="text-white/78 max-w-[40ch] leading-relaxed">Sign in to manage the catalogue, distributors, agents, and enquiries.</p>
           </div>
-        </div>
+        ))}
         <div className="absolute top-9 left-14 z-10 flex items-center gap-2.5">
           <img src="/logo_full.png" alt="MACL" className="h-10 rounded-lg bg-white p-0.5" />
           <span className="font-bold text-white">MUDDO AGRO</span>
+        </div>
+        <div className="absolute bottom-6.5 right-14 z-20 flex gap-1.5">
+          {SLIDES.map((s, i) => (
+            <button
+              key={s.tag}
+              onClick={() => setSlide(i)}
+              aria-label={`Show ${s.tag} slide`}
+              className={`h-1.5 rounded-full transition-all ${i === slide ? 'w-5.5 bg-accent-blue' : 'w-1.5 bg-white/35'}`}
+            />
+          ))}
         </div>
       </div>
 

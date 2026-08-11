@@ -49,6 +49,14 @@ export default function AboutPage() {
         </div>
       </section>
 
+      <section style={{ paddingTop: '2rem' }}>
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+          <div className="rounded-2xl overflow-hidden shadow-lg">
+            <img src="/images/handshake.jpg" alt="Trust, Respect, Integrity, Honesty — how MACL does business" className="w-full h-auto max-h-[280px] object-cover" />
+          </div>
+        </div>
+      </section>
+
       <section className="py-14">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-14 items-center">
           <div>
@@ -63,8 +71,8 @@ export default function AboutPage() {
               <a href={`mailto:${site?.company_email}`} className="text-accent-blue">{site?.company_email}</a>
             </p>
           </div>
-          <div className="rounded-2xl overflow-hidden shadow-lg bg-white flex items-center justify-center p-6">
-            <img src="/images/macl_banner.jpg" alt="MACL" className="w-full h-auto object-contain" />
+          <div className="rounded-2xl overflow-hidden shadow-lg">
+            <img src="/images/about_side.jpg" alt="Healthy greenhouse tomatoes grown with MACL products" className="w-full h-auto object-cover" />
           </div>
         </div>
       </section>

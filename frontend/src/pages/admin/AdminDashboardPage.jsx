@@ -38,6 +38,10 @@ export default function AdminDashboardPage() {
     <div>
       <h1 className="text-xl font-bold text-text-1 mb-6 flex items-center gap-2"><Icon name="tachometer-alt" />Overview</h1>
 
+      <div className="rounded-card overflow-hidden mb-5.5 h-[190px]">
+        <img src="/images/banner_admin.png" alt="MACL Admin" className="w-full h-full object-cover" />
+      </div>
+
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {kpis.map(([icon, val, label]) => (
           <div key={label} className="bg-bg-card border border-border rounded-card p-5.5">

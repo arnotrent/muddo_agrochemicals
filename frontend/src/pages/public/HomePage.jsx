@@ -123,6 +123,38 @@ export default function HomePage() {
       )}
 
       <section className="py-16">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid grid-cols-2 gap-4">
+            <img src="/images/why_quality.jpg" alt="Pest identification close-up" className="w-full h-[230px] object-cover rounded-2xl shadow-md" />
+            <img src="/images/why_equipment.jpg" alt="Application equipment" className="w-full h-[230px] object-cover rounded-2xl shadow-md mt-8" />
+          </div>
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3">
+              <Icon name="microscope" />Field-Tested
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold text-text-1 mb-3.5">We know the pest before we sell you the cure</h2>
+            <p className="leading-relaxed mb-4 text-text-2">
+              Every product we stock is matched against real Ugandan field conditions \u2014 the actual aphids, whitefly
+              and beetles farmers bring to us, not just a label. That's why we can tell you exactly which product
+              fits your crop, not just sell you the most expensive one.
+            </p>
+            <div className="flex flex-col gap-3">
+              {[
+                'Genuine, MAAIF-registered active ingredients \u2014 never diluted',
+                'Correct dosage guidance for your crop, not a generic label rate',
+                'Application equipment sold and serviced alongside the chemical',
+              ].map((line) => (
+                <div key={line} className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-bg-alt text-accent-blue flex items-center justify-center flex-shrink-0"><Icon name="check" /></div>
+                  <span className="text-sm text-text-2">{line}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-16">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="text-center mb-11">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3">

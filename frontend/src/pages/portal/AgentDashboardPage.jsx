@@ -36,7 +36,11 @@ export default function AgentDashboardPage() {
   return (
     <div>
       <h1 className="text-xl font-bold text-text-1 mb-1">Welcome back, <span className="text-accent-blue">{user?.agent?.name}</span> 👋</h1>
-      <p className="text-text-3 text-sm mb-6">{user?.agent?.region}{user?.agent?.district ? ` · ${user.agent.district}` : ''}</p>
+      <p className="text-text-3 text-sm mb-4">{user?.agent?.region}{user?.agent?.district ? ` · ${user.agent.district}` : ''}</p>
+
+      <div className="rounded-card overflow-hidden mb-5.5 h-[170px]">
+        <img src="/images/banner_agent.png" alt="MACL Agent" className="w-full h-full object-cover" />
+      </div>
 
       {flash && (
         <div className={`mb-5 p-3.5 rounded-lg text-sm flex items-center gap-2 ${flash.ok ? 'bg-accent-green/10 text-accent-green' : 'bg-accent-red/10 text-accent-red'}`}>

@@ -1,9 +1,28 @@
 /** @type {import('tailwindcss').Config} */
+
+// Tailwind's default scale only defines .5/1.5/2.5/3.5 as fractional
+// steps — every other half-value (4.5, 6.5, 8.5, 11.5, 27.5, etc.) used
+// throughout this codebase would otherwise silently generate NO CSS at
+// all (not an error, just a no-op class), which is what caused the
+// collapsed/misaligned spacing seen after the first deploy. Generating
+// the FULL half-integer scale here — using Tailwind's own 0.25rem-per-
+// unit convention — fixes every one of those classes at once, instead
+// of hunting down and hand-editing each occurrence across ~40 files.
+function halfStepSpacing(maxUnits) {
+  const scale = {}
+  for (let i = 0; i <= maxUnits * 2; i++) {
+    const key = (i / 2).toString()
+    scale[key] = `${(i / 2) * 0.25}rem`
+  }
+  return scale
+}
+
 export default {
   darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
+      spacing: halfStepSpacing(48),
       fontFamily: {
         sans: ['Inter', '-apple-system', 'Segoe UI', 'sans-serif'],
       },
@@ -41,7 +60,24 @@ export default {
         'glow-red': '0 0 0 1px rgba(239,68,68,.35), 0 4px 16px rgba(239,68,68,.35)',
         'glow-green': '0 0 0 1px rgba(74,222,128,.35), 0 4px 16px rgba(74,222,128,.35)',
       },
+      keyframes: {
+        pageIn: { from: { opacity: 0, transform: 'translateY(12px)' }, to: { opacity: 1, transform: 'none' } },
+        revealUp: { from: { opacity: 0, transform: 'translateY(22px)' }, to: { opacity: 1, transform: 'none' } },
+        shimmer: { '0%': { backgroundPosition: '-400px 0' }, '100%': { backgroundPosition: '400px 0' } },
+        dotPulse: {
+          '0%': { boxShadow: '0 0 0 0 rgba(74,222,128,.5)' },
+          '70%': { boxShadow: '0 0 0 8px rgba(74,222,128,0)' },
+          '100%': { boxShadow: '0 0 0 0 rgba(74,222,128,0)' },
+        },
+      },
+      animation: {
+        pageIn: 'pageIn 320ms cubic-bezier(.22,1,.36,1) both',
+        revealUp: 'revealUp 600ms cubic-bezier(.22,1,.36,1) both',
+        shimmer: 'shimmer 1.4s infinite linear',
+        dotPulse: 'dotPulse 2s infinite',
+      },
     },
   },
   plugins: [],
 }
+

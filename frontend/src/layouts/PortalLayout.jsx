@@ -25,7 +25,7 @@ export default function PortalLayout() {
         }`}
       >
         <div className="p-5 flex items-center gap-2.5 border-b border-white/10">
-          <img src="/logo_full.png" alt="MACL" className="h-9 rounded-lg bg-white p-0.5" />
+          <img src="/logo_icon.png" alt="MACL" className="h-9 rounded-lg bg-white p-0.5" />
           <div>
             <span className="font-bold text-sm text-white block leading-tight">Agent Portal</span>
             <span className="text-[0.68rem] text-white/40">{user?.agent?.name}</span>

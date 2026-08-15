@@ -60,7 +60,7 @@ export default function LoginPage() {
           </div>
         ))}
         <div className="absolute top-9 left-14 z-10 flex items-center gap-2.5">
-          <img src="/logo_full.png" alt="MACL" className="h-10 rounded-lg bg-white p-0.5" />
+          <img src="/logo_icon.png" alt="MACL" className="h-10 rounded-lg bg-white p-0.5" />
           <span className="font-bold text-white">MUDDO AGRO</span>
         </div>
         <div className="absolute bottom-6.5 right-14 z-20 flex gap-1.5">
@@ -78,7 +78,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-center p-6 sm:p-10">
         <div className="w-full max-w-[400px]">
           <div className="lg:hidden text-center mb-6">
-            <img src="/logo_full.png" alt="MACL" className="h-14 mx-auto rounded-xl" />
+            <img src="/logo_icon.png" alt="MACL" className="h-14 mx-auto rounded-xl" />
           </div>
           <h1 className="text-2xl font-bold text-text-1 mb-1.5">Staff Portal</h1>
           <p className="text-sm text-text-3 mb-7">Authorised personnel only — administrators and field agents.</p>

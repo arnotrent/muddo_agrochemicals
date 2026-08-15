@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import Icon from '../components/Icon'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
-import { useSiteSettings } from '../hooks/useSiteSettings'
+import site from '../data/siteConfig'
 
 const navLinkClass = ({ isActive }) =>
   `px-3 py-1.5 rounded-lg text-sm transition-colors ${
@@ -12,21 +12,46 @@ const navLinkClass = ({ isActive }) =>
 
 export default function PublicLayout() {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [scrollPct, setScrollPct] = useState(0)
+  const [showBackToTop, setShowBackToTop] = useState(false)
   const { user } = useAuth()
   const { theme, toggleTheme } = useTheme()
-  const site = useSiteSettings()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
   }, [menuOpen])
 
+  // Scroll progress bar + back-to-top visibility — restores the original
+  // site's .scroll-progress and #backToTop behavior from static/js/main.js.
+  useEffect(() => {
+    const onScroll = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight
+      setScrollPct(max > 0 ? Math.min(100, (window.scrollY / max) * 100) : 0)
+      setShowBackToTop(window.scrollY > 400)
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Scroll to top and replay the page-in fade whenever the route changes —
+  // matches the original's per-page-load `animation: pageIn` on <body>.
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [location.pathname])
+
   return (
     <div className="min-h-screen flex flex-col bg-bg text-text-2">
+      <div
+        className="fixed top-0 left-0 h-[3px] z-[10001] bg-accent-blue pointer-events-none transition-[width] duration-100"
+        style={{ width: `${scrollPct}%` }}
+      />
       <nav className="sticky top-0 z-50 bg-bg-card border-b border-border">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-5 lg:px-8 h-[68px] flex items-center justify-between gap-2">
           <Link to="/" className="flex items-center gap-2.5 flex-shrink-0">
-            <img src="/logo_full.png" alt="MACL" className="h-10 w-auto max-w-[170px] object-contain" />
+            <img src="/logo_icon.png" alt="MACL" className="h-10 w-auto max-w-[170px] object-contain" />
             <div className="hidden sm:flex flex-col leading-none">
               <span className="font-bold text-sm text-text-1">MUDDO AGRO</span>
               <span className="text-[0.6rem] text-text-3 font-semibold tracking-wider uppercase mt-0.5">
@@ -142,7 +167,7 @@ export default function PublicLayout() {
         </div>
       )}
 
-      <main className="flex-1">
+      <main className="flex-1 animate-pageIn" key={location.pathname}>
         <Outlet />
       </main>
 
@@ -150,21 +175,21 @@ export default function PublicLayout() {
         <div className="max-w-[1240px] mx-auto px-4 sm:px-5 lg:px-8 pb-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
             <div>
-              <img src="/logo_full.png" alt="MACL" className="h-12 mb-3.5 bg-white rounded-lg p-1" />
+              <img src="/logo_icon.png" alt="MACL" className="h-12 mb-3.5 bg-white rounded-lg p-1" />
               <p className="text-sm leading-relaxed text-white/65 max-w-[30ch] mb-3.5">
                 Uganda's trusted MAAIF-registered distributor of high-quality agrochemicals since{' '}
-                {site?.year_founded || '2020'}.
+                {site.year_founded || '2020'}.
               </p>
               <div className="flex gap-2.5 mt-4">
-                {site?.facebook_url && (
+                {site.facebook_url && (
                   <a href={site.facebook_url} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-accent-blue hover:text-bg-deep">
                     <Icon name="facebook-f" />
                   </a>
                 )}
-                <a href={`https://wa.me/${site?.whatsapp_number || ''}`} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-accent-blue hover:text-bg-deep">
+                <a href={`https://wa.me/${site.whatsapp_number || ''}`} target="_blank" rel="noreferrer" className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-accent-blue hover:text-bg-deep">
                   <Icon name="whatsapp" />
                 </a>
-                <a href={`mailto:${site?.company_email || ''}`} className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-accent-blue hover:text-bg-deep">
+                <a href={`mailto:${site.company_email || ''}`} className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center hover:bg-accent-blue hover:text-bg-deep">
                   <Icon name="envelope" />
                 </a>
               </div>
@@ -191,9 +216,9 @@ export default function PublicLayout() {
             <div>
               <h4 className="text-white text-sm font-bold uppercase tracking-wide mb-3.5">Contact & Staff</h4>
               <ul className="space-y-2 text-sm text-white/68">
-                <li className="flex gap-2"><Icon name="map-marker-alt" className="text-accent-blue mt-0.5" />{site?.company_address}</li>
-                <li className="flex gap-2"><Icon name="phone" className="text-accent-blue mt-0.5" /><a href={`tel:${site?.company_phone}`}>{site?.company_phone}</a></li>
-                <li className="flex gap-2"><Icon name="envelope" className="text-accent-blue mt-0.5" /><a href={`mailto:${site?.company_email}`}>{site?.company_email}</a></li>
+                <li className="flex gap-2"><Icon name="map-marker-alt" className="text-accent-blue mt-0.5" />{site.company_address}</li>
+                <li className="flex gap-2"><Icon name="phone" className="text-accent-blue mt-0.5" /><a href={`tel:${site.company_phone}`}>{site.company_phone}</a></li>
+                <li className="flex gap-2"><Icon name="envelope" className="text-accent-blue mt-0.5" /><a href={`mailto:${site.company_email}`}>{site.company_email}</a></li>
               </ul>
               {!user && (
                 <Link to="/login" className="flex items-center gap-1.5 text-sm mt-3 hover:text-accent-blue">
@@ -209,7 +234,7 @@ export default function PublicLayout() {
       </footer>
 
       <a
-        href={`https://wa.me/${site?.whatsapp_number || ''}?text=Hello%20Muddo%20Agro%2C%20I%20need%20help`}
+        href={`https://wa.me/${site.whatsapp_number || ''}?text=Hello%20Muddo%20Agro%2C%20I%20need%20help`}
         target="_blank"
         rel="noreferrer"
         className="fixed bottom-5 right-4 z-[800] w-[52px] h-[52px] rounded-full bg-accent-green text-bg-deep flex items-center justify-center text-2xl shadow-glow-green hover:scale-110 transition-transform"
@@ -217,6 +242,16 @@ export default function PublicLayout() {
       >
         <Icon name="whatsapp" size="1.4rem" />
       </a>
+
+      <button
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+        aria-label="Back to top"
+        className={`fixed bottom-[84px] right-4 z-[800] w-10 h-10 rounded-full bg-accent-blue text-white flex items-center justify-center shadow-glow-blue transition-all ${
+          showBackToTop ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'
+        }`}
+      >
+        <Icon name="arrow-up" size="0.9rem" />
+      </button>
     </div>
   )
 }

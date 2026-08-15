@@ -13,7 +13,6 @@ const links = [
   { to: '/admin/supply-requests', icon: 'truck', label: 'Supply Requests' },
   { to: '/admin/agents', icon: 'users', label: 'Field Agents' },
   { to: '/admin/chat', icon: 'comments', label: 'Messages' },
-  { to: '/admin/site-content', icon: 'edit', label: 'Site Content' },
   { to: '/admin/newsletter', icon: 'paper-plane', label: 'Newsletter' },
   { to: '/admin/import', icon: 'upload', label: 'Import CSV' },
   { to: '/admin/settings', icon: 'cog', label: 'Settings' },
@@ -34,7 +33,7 @@ export default function AdminLayout() {
         }`}
       >
         <div className="p-5 flex items-center gap-2.5 border-b border-white/10">
-          <img src="/logo_full.png" alt="MACL" className="h-9 rounded-lg bg-white p-0.5" />
+          <img src="/logo_icon.png" alt="MACL" className="h-9 rounded-lg bg-white p-0.5" />
           <div>
             <span className="font-bold text-sm text-white block leading-tight">MACL Admin</span>
             <span className="text-[0.68rem] text-white/40">Muddo Agro Chemicals</span>

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { coreApi, productsApi } from '../../api/services'
-import { useSiteSettings } from '../../hooks/useSiteSettings'
+import { productsApi } from '../../api/services'
+import site from '../../data/siteConfig'
+import staticFaqs from '../../data/faqs'
 import Icon from '../../components/Icon'
 
 const CATEGORY_META = [
@@ -12,13 +13,11 @@ const CATEGORY_META = [
 ]
 
 export default function AboutPage() {
-  const site = useSiteSettings()
-  const [faqs, setFaqs] = useState([])
   const [openFaq, setOpenFaq] = useState(null)
   const [groups, setGroups] = useState([])
+  const faqs = staticFaqs
 
   useEffect(() => {
-    coreApi.faqs().then(({ data }) => setFaqs(data.results || data))
     Promise.all(CATEGORY_META.map(([cat]) => productsApi.list({ category: cat, page_size: 8 }))).then((responses) => {
       setGroups(
         CATEGORY_META.map(([cat, icon, title], i) => ({
@@ -36,7 +35,7 @@ export default function AboutPage() {
       <section className="py-10 pb-0">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-blue/15 border border-accent-blue/35 text-accent-blue text-xs font-bold uppercase tracking-wide mb-4">
-            <Icon name="certificate" />MAAIF-Registered &middot; Est. {site?.year_founded || '2020'}
+            <Icon name="certificate" />MAAIF-Registered &middot; Est. {site.year_founded || '2020'}
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-text-1 mb-3.5">
             Farming Uganda depends on, <span className="text-accent-blue">supplied honestly.</span>
@@ -62,13 +61,13 @@ export default function AboutPage() {
           <div>
             <h2 className="text-2xl font-bold text-text-1 mb-4">MACL — Muddo Agro Chemicals LTD</h2>
             <p className="leading-relaxed mb-3.5 text-text-2">
-              Based in Kampala's {site?.company_address}, MACL is a MAAIF-registered distributor of pesticides,
+              Based in Kampala's {site.company_address}, MACL is a MAAIF-registered distributor of pesticides,
               herbicides, fungicides, fertilizers and spraying equipment serving all regions of Uganda.
             </p>
             <p className="leading-relaxed text-text-2">
-              <Icon name="phone" className="text-accent-blue mr-1.5" /><strong>Tel:</strong> {site?.company_phone}<br />
+              <Icon name="phone" className="text-accent-blue mr-1.5" /><strong>Tel:</strong> {site.company_phone}<br />
               <Icon name="envelope" className="text-accent-blue mr-1.5" /><strong>Email:</strong>{' '}
-              <a href={`mailto:${site?.company_email}`} className="text-accent-blue">{site?.company_email}</a>
+              <a href={`mailto:${site.company_email}`} className="text-accent-blue">{site.company_email}</a>
             </p>
           </div>
           <div className="rounded-2xl overflow-hidden shadow-lg">

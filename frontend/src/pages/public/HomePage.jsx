@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import { productsApi, distributorsApi } from '../../api/services'
 import ProductCard from '../../components/ProductCard'
 import Icon from '../../components/Icon'
-import { useSiteSettings } from '../../hooks/useSiteSettings'
+import Reveal from '../../components/Reveal'
+import CountUp from '../../components/CountUp'
+import site from '../../data/siteConfig'
 
 const CATEGORIES = [
   ['bug', 'Pesticides', 'pesticides', '/images/hero_pesticides.jpg'],
@@ -25,7 +27,6 @@ export default function HomePage() {
   const [featured, setFeatured] = useState([])
   const [distCount, setDistCount] = useState(0)
   const [totalProducts, setTotalProducts] = useState(0)
-  const site = useSiteSettings()
 
   useEffect(() => {
     productsApi.list({ page_size: 6, ordering: '?' }).then(({ data }) => {
@@ -40,42 +41,50 @@ export default function HomePage() {
     <>
       <section className="relative min-h-[78vh] flex items-center bg-cover bg-center" style={{ backgroundImage: "linear-gradient(180deg, rgba(15,23,42,.55) 0%, rgba(15,23,42,.82) 100%), url('/images/hero_home.jpg')" }}>
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
-          <div className="max-w-[640px] py-16">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-blue/15 border border-accent-blue/35 text-accent-blue text-xs font-bold uppercase tracking-wide mb-4.5">
+          <div className="max-w-[640px] py-16 text-left">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-blue/15 border border-accent-blue/35 text-accent-blue text-xs font-bold uppercase tracking-wide mb-4.5 animate-pageIn">
               <Icon name="certificate" />MAAIF-Registered &middot; Est. 2020
             </div>
-            <h1 className="text-white text-4xl sm:text-5xl font-bold mb-4.5 leading-tight">
+            <h1 className="text-white text-4xl sm:text-5xl font-bold mb-4.5 leading-tight text-left animate-pageIn" style={{ animationDelay: '80ms' }}>
               Uganda's Trusted <span className="text-accent-blue">Agrochemical</span> Partner
             </h1>
-            <p className="text-white/88 text-base sm:text-lg leading-relaxed max-w-[52ch] mb-7">
+            <p className="text-white/88 text-base sm:text-lg leading-relaxed max-w-[52ch] mb-7 text-left animate-pageIn" style={{ animationDelay: '140ms' }}>
               Genuine pesticides, herbicides, fungicides, fertilizers and equipment. MAAIF-registered. Kampala-based. Nationwide reach.
             </p>
-            <div className="flex gap-3 flex-wrap mb-9">
-              <Link to="/products/pesticides" className="inline-flex items-center gap-2 px-5 py-3.5 rounded-btn bg-accent-blue text-white font-bold text-sm shadow-glow-blue">
+            <div className="flex gap-3 flex-wrap mb-9 animate-pageIn" style={{ animationDelay: '200ms' }}>
+              <Link to="/products/pesticides" className="inline-flex items-center gap-2 px-5 py-3.5 rounded-btn bg-accent-blue text-white font-bold text-sm shadow-glow-blue hover:bg-accent-blue-hover hover:-translate-y-0.5 transition-all">
                 <Icon name="flask" />Browse Products
               </Link>
-              <a href={`https://wa.me/${site?.whatsapp_number || ''}?text=Hello%20Muddo%20Agro`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-5 py-3.5 rounded-btn bg-accent-green text-bg-deep font-bold text-sm shadow-glow-green">
+              <a href={`https://wa.me/${site.whatsapp_number || ''}?text=Hello%20Muddo%20Agro`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-5 py-3.5 rounded-btn bg-accent-green text-bg-deep font-bold text-sm shadow-glow-green hover:-translate-y-0.5 transition-all">
                 <Icon name="whatsapp" />WhatsApp Us
               </a>
-              <Link to="/contact" className="inline-flex items-center gap-2 px-5 py-3.5 rounded-btn border border-white/40 text-white font-bold text-sm">
+              <Link to="/contact" className="inline-flex items-center gap-2 px-5 py-3.5 rounded-btn border border-white/40 text-white font-bold text-sm hover:-translate-y-0.5 transition-all">
                 <Icon name="envelope" />Enquire
               </Link>
             </div>
             <div className="grid grid-cols-3 gap-3 max-w-[420px]">
               <div className="text-center p-4 bg-white/[0.08] border border-white/[0.14] rounded-2xl backdrop-blur">
-                <div className="text-3xl font-bold text-accent-blue">{totalProducts}</div>
+                <div className="text-3xl font-bold text-accent-blue"><CountUp value={totalProducts} /></div>
                 <div className="text-[0.7rem] text-white/72 mt-1 font-semibold">Products</div>
               </div>
               <div className="text-center p-4 bg-white/[0.08] border border-white/[0.14] rounded-2xl backdrop-blur">
-                <div className="text-3xl font-bold text-accent-blue">{distCount}</div>
+                <div className="text-3xl font-bold text-accent-blue"><CountUp value={distCount} /></div>
                 <div className="text-[0.7rem] text-white/72 mt-1 font-semibold">Outlets</div>
               </div>
               <div className="text-center p-4 bg-white/[0.08] border border-white/[0.14] rounded-2xl backdrop-blur">
-                <div className="text-3xl font-bold text-accent-blue">4</div>
+                <div className="text-3xl font-bold text-accent-blue"><CountUp value={4} /></div>
                 <div className="text-[0.7rem] text-white/72 mt-1 font-semibold">Regions</div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="py-12">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+          <Reveal className="bg-white rounded-card border border-border shadow-lg overflow-hidden flex items-center justify-center p-6 sm:p-10 max-w-[720px] mx-auto">
+            <img src="/logo_full.png" alt="Muddo Agro Chemicals LTD — official business card" className="w-full h-auto object-contain" />
+          </Reveal>
         </div>
       </section>
 
@@ -89,8 +98,9 @@ export default function HomePage() {
             <p className="text-text-3 max-w-[56ch] mx-auto mt-2.5">MAAIF-registered products across four specialist categories — all genuine, all in stock.</p>
           </div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {CATEGORIES.map(([icon, title, slug, img]) => (
-              <Link key={slug} to={`/products/${slug}`} className="bg-bg-card border border-border rounded-card overflow-hidden hover:-translate-y-1.5 hover:scale-[1.015] hover:border-accent-blue transition-all group">
+            {CATEGORIES.map(([icon, title, slug, img], i) => (
+              <Reveal key={slug} delay={i * 60}>
+              <Link to={`/products/${slug}`} className="block bg-bg-card border border-border rounded-card overflow-hidden hover:-translate-y-1.5 hover:scale-[1.015] hover:border-accent-blue transition-all group">
                 <div className="h-[150px] overflow-hidden">
                   <img src={img} alt={title} loading="lazy" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" onError={(e) => { e.currentTarget.src = '/images/products_all.jpg' }} />
                 </div>
@@ -101,6 +111,7 @@ export default function HomePage() {
                   <div className="font-bold text-text-1 group-hover:text-accent-blue">{title}</div>
                 </div>
               </Link>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -116,7 +127,7 @@ export default function HomePage() {
               <h2 className="text-3xl font-bold text-text-1">Featured Products</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featured.map((p) => <ProductCard key={p.id} product={p} />)}
+              {featured.map((p, i) => <Reveal key={p.id} delay={i * 60}><ProductCard product={p} /></Reveal>)}
             </div>
           </div>
         </section>
@@ -124,23 +135,23 @@ export default function HomePage() {
 
       <section className="py-16">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="grid grid-cols-2 gap-4">
+          <Reveal className="grid grid-cols-2 gap-4">
             <img src="/images/why_quality.jpg" alt="Pest identification close-up" className="w-full h-[230px] object-cover rounded-2xl shadow-md" />
             <img src="/images/why_equipment.jpg" alt="Application equipment" className="w-full h-[230px] object-cover rounded-2xl shadow-md mt-8" />
-          </div>
-          <div>
+          </Reveal>
+          <Reveal delay={120}>
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3">
               <Icon name="microscope" />Field-Tested
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-text-1 mb-3.5">We know the pest before we sell you the cure</h2>
             <p className="leading-relaxed mb-4 text-text-2">
-              Every product we stock is matched against real Ugandan field conditions \u2014 the actual aphids, whitefly
+              Every product we stock is matched against real Ugandan field conditions — the actual aphids, whitefly
               and beetles farmers bring to us, not just a label. That's why we can tell you exactly which product
               fits your crop, not just sell you the most expensive one.
             </p>
             <div className="flex flex-col gap-3">
               {[
-                'Genuine, MAAIF-registered active ingredients \u2014 never diluted',
+                'Genuine, MAAIF-registered active ingredients — never diluted',
                 'Correct dosage guidance for your crop, not a generic label rate',
                 'Application equipment sold and serviced alongside the chemical',
               ].map((line) => (
@@ -150,7 +161,7 @@ export default function HomePage() {
                 </div>
               ))}
             </div>
-          </div>
+          </Reveal>
         </div>
       </section>
 
@@ -161,16 +172,17 @@ export default function HomePage() {
               <Icon name="award" />Why Choose Us
             </div>
             <h2 className="text-3xl font-bold text-text-1">The MACL Difference</h2>
+            <p className="text-text-3 max-w-[56ch] mx-auto mt-2.5">Six reasons Uganda's farmers and distributors choose Muddo Agro Chemicals LTD.</p>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {WHY_CARDS.map(([icon, title, desc]) => (
-              <div key={title} className="p-6.5 rounded-card bg-bg-card border border-border hover:-translate-y-1 hover:border-accent-blue transition-all">
+            {WHY_CARDS.map(([icon, title, desc], i) => (
+              <Reveal key={title} delay={i * 60} className="p-6.5 rounded-card bg-bg-card border border-border hover:-translate-y-1 hover:border-accent-blue transition-all">
                 <div className="w-11.5 h-11.5 rounded-xl bg-bg-alt text-accent-blue flex items-center justify-center mb-4">
                   <Icon name={icon} />
                 </div>
                 <h3 className="font-bold text-text-1 mb-2">{title}</h3>
                 <p className="text-sm text-text-3 leading-relaxed">{desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>

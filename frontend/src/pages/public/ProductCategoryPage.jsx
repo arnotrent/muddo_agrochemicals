@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { productsApi } from '../../api/services'
 import ProductCard from '../../components/ProductCard'
 import Icon from '../../components/Icon'
+import Reveal from '../../components/Reveal'
 
 const META = {
   pesticides: { category: 'pesticide', title: 'Pesticides', tag: 'Insect & Pest Control', icon: 'bug',
@@ -105,7 +106,7 @@ export default function ProductCategoryPage() {
             </div>
           ) : filtered.length ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filtered.map((p) => <ProductCard key={p.id} product={p} />)}
+              {filtered.map((p, i) => <Reveal key={p.id} delay={Math.min(i, 8) * 50}><ProductCard product={p} /></Reveal>)}
             </div>
           ) : (
             <div className="text-center py-16 text-text-3">

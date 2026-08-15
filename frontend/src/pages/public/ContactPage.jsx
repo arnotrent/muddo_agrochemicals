@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { coreApi } from '../../api/services'
-import { useSiteSettings } from '../../hooks/useSiteSettings'
+import site from '../../data/siteConfig'
 import Icon from '../../components/Icon'
 
 const SUBJECTS = ['Product Enquiry', 'Pricing / Quotation', 'Wholesale / Bulk Order', 'Distributor Partnership', 'Technical / Agronomy Advice', 'General Enquiry']
 
 export default function ContactPage() {
   const [params] = useSearchParams()
-  const site = useSiteSettings()
   const [form, setForm] = useState({ name: '', phone: '', email: '', subject: params.get('subject') || '', message: '' })
   const [status, setStatus] = useState(null) // null | 'sending' | { ok, ref } | { error }
 
@@ -43,10 +42,10 @@ export default function ContactPage() {
           <div>
             <h2 className="text-2xl font-bold text-text-1 mb-5">A Few Ways to Reach Us</h2>
             {[
-              ['map-marker-alt', 'Visit us in Kampala', site?.company_address],
-              ['phone', 'Call or WhatsApp us', site?.company_phone],
-              ['envelope', 'Email the team', site?.company_email],
-              ['clock', "When we're open", site?.business_hours],
+              ['map-marker-alt', 'Visit us in Kampala', site.company_address],
+              ['phone', 'Call or WhatsApp us', site.company_phone],
+              ['envelope', 'Email the team', site.company_email],
+              ['clock', "When we're open", site.business_hours],
             ].map(([icon, label, content]) => (
               <div key={label} className="flex items-start gap-3.5 p-4 bg-bg-card border border-border rounded-2xl mb-3 hover:border-accent-blue transition-colors">
                 <div className="w-10 h-10 rounded-lg bg-bg-alt text-accent-blue flex items-center justify-center flex-shrink-0">

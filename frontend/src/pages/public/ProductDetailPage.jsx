@@ -3,14 +3,13 @@ import { useParams, Link } from 'react-router-dom'
 import { productsApi } from '../../api/services'
 import Icon from '../../components/Icon'
 import ProductCard from '../../components/ProductCard'
-import { useSiteSettings } from '../../hooks/useSiteSettings'
+import site from '../../data/siteConfig'
 
 export default function ProductDetailPage() {
   const { id } = useParams()
   const [product, setProduct] = useState(null)
   const [related, setRelated] = useState([])
   const [loading, setLoading] = useState(true)
-  const site = useSiteSettings()
 
   useEffect(() => {
     setLoading(true)
@@ -50,7 +49,7 @@ export default function ProductDetailPage() {
               <Link to={`/contact?subject=Product+Enquiry+${encodeURIComponent(product.name)}`} className="flex items-center justify-center gap-2 py-3.5 rounded-btn bg-accent-blue text-white font-bold text-sm">
                 <Icon name="envelope" />Enquire Now
               </Link>
-              <a href={`https://wa.me/${site?.whatsapp_number || ''}?text=Hello%20MACL%2C%20I%20am%20interested%20in%20${encodeURIComponent(product.name)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 py-3.5 rounded-btn bg-accent-green text-bg-deep font-bold text-sm">
+              <a href={`https://wa.me/${site.whatsapp_number || ''}?text=Hello%20MACL%2C%20I%20am%20interested%20in%20${encodeURIComponent(product.name)}`} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 py-3.5 rounded-btn bg-accent-green text-bg-deep font-bold text-sm">
                 <Icon name="whatsapp" />WhatsApp Order
               </a>
               <div className="flex gap-2.5">

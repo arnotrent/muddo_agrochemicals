@@ -32,6 +32,23 @@ Your image set didn't include a "Fertilizers & Equipment" category hero — I us
 ### Unused-but-available assets
 Your batch included several marketing flyers (`flyer_*.png`), packaging shots (`photo_boxes_*.png`, `photo_*_plain.png`, `photo_toplaxlyn_bag.png`), and standalone pest/crop photography (`pest_collage_*.png`, `pest_whitefly.jpg`, `tomato_*.png`, `tomatoes_greenhouse.png`, `photo_rollup_banner.png`, `photo_shop_shelf.png`, `photo_ourproducts_collage.png`) that aren't wired into any page yet — they're all copied into `frontend/public/images/` so they're available if you want a "downloads" section, a product gallery with multiple photos, or a blog/news section later.
 
+## Round 3 fixes (this update)
+
+**Critical bug, now fixed:** Tailwind spacing values like `w-11.5`, `gap-4.5`, `p-6.5` used throughout the components aren't in Tailwind's default scale — they silently generate **zero CSS**, which is what caused the collapsed spacing, missing card borders, and broken layout in your screenshots. Fixed by extending the Tailwind config to generate the full half-integer spacing scale globally (`tailwind.config.js`), rather than hunting down and hand-editing every occurrence across ~40 files. Also fixed a matching bug (`duration-600`, not a valid Tailwind duration step) in the scroll-reveal animation.
+
+**Deploy failure, now fixed:** Render couldn't find `manage.py` because the backend package only ever shipped the new API-layer files, on the assumption you'd merge them into an existing repo by hand. Since you're deploying `backend/` as its own service root, it's now a **complete standalone Django project** — every model, migration, admin config, and management command reconstructed and verified (see `backend/MERGE_INSTRUCTIONS.md` for the full account, and the verification log below).
+
+**Content changes, as requested:**
+- FAQs and company contact details (phone, email, address, hours) are now **static, baked into the frontend** (`src/data/faqs.js`, `src/data/siteConfig.js`) — no longer fetched from the backend, no longer editable through the admin panel. This also removes a network round-trip from every page load.
+- The admin "Site Content" page/route has been removed accordingly.
+- Logo split into two assets: `public/logo_icon.png` (the real circular MACL mark you sent — used everywhere small: navbar, sidebars, login) and `public/logo_full.png` (the letterhead/business card — now shown prominently in its own bordered container on the homepage, between the hero and the product categories).
+- Homepage hero text is explicitly left-aligned.
+- Fixed the "MACL Difference" section — restored the missing subtitle line and fixed the broken card layout (same root cause as the spacing bug above).
+
+**Speed and animation, as requested:**
+- Route-based code splitting (`React.lazy` per page) — the homepage now loads ~270KB of JS instead of the previous single ~712KB bundle; Leaflet and Chart.js only download on the pages that actually use them.
+- Restored: scroll-reveal-on-view for cards and sections, a page fade-in on every route change, animated count-up numbers on the homepage stats, a scroll-progress bar, and a back-to-top button — all present in the original site and dropped in the first React pass.
+
 ## Backend fix that came out of the image work
 Seeded `image_url` values previously pointed at `/static/images/...` — a path that only made sense when Django rendered the templates itself. Now that the frontend is a separate origin, I:
 1. Updated `seed_data.py` to use `/images/...` (matching the React app's own `public/images/` convention).

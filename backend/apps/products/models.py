@@ -7,14 +7,24 @@ class Product(models.Model):
     name              = models.CharField(max_length=200)
     category          = models.CharField(max_length=20, choices=CATS)
     description       = models.TextField(blank=True)
+    # Bullet-point application/usage steps, one per line — shown separately
+    # from `description` on the product detail page (the "extended
+    # details" section), kept out of the short card-view text entirely.
+    usage_instructions = models.TextField(blank=True)
     active_ingredient = models.CharField(max_length=300, blank=True)
-    formulation       = models.CharField(max_length=200, blank=True)
-    crops             = models.CharField(max_length=300, blank=True)
-    dosage            = models.CharField(max_length=200, blank=True)
-    packing           = models.CharField(max_length=200, blank=True)
-    image_url         = models.CharField(max_length=500, blank=True)
-    image_file        = models.ImageField(upload_to='products/', blank=True, null=True)
-    created_at        = models.DateTimeField(auto_now_add=True)
+    formulation        = models.CharField(max_length=200, blank=True)
+    crops              = models.CharField(max_length=300, blank=True)
+    dosage             = models.CharField(max_length=200, blank=True)
+    packing            = models.CharField(max_length=200, blank=True)
+    image_url          = models.CharField(max_length=500, blank=True)
+    image_file         = models.ImageField(upload_to='products/', blank=True, null=True)
+    # A product still being processed / not yet released to stock. It's
+    # shown as a "Featured" preview (on the homepage and its category
+    # page) instead of showing stock status, and is excluded from normal
+    # stock-out messaging until an admin flips this off once real stock
+    # is added — see apps/products/serializers.py / api_views.py.
+    is_featured         = models.BooleanField(default=False)
+    created_at         = models.DateTimeField(auto_now_add=True)
     class Meta: ordering=['category','name']
     def __str__(self): return f"{self.name} ({self.get_category_display()})"
     def get_absolute_url(self): return reverse('product_detail',args=[self.pk])
@@ -29,7 +39,9 @@ class Product(models.Model):
         except: return 0
     @property
     def stock_status(self):
+        if self.is_featured: return 'featured'
         q=self.stock_qty
         if q==0: return 'out'
         if q<=10: return 'low'
         return 'in'
+

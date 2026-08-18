@@ -1,91 +1,300 @@
-# Muddo Agro Chemicals LTD — Django DRF API + React SPA
+# Muddo Agro Chemicals LTD — Web Platform
 
-Two independently deployable projects:
+Uganda's MAAIF-registered agrochemical distributor. Decoupled architecture:
+a Django + Django REST Framework JSON API backend, and a React + Vite +
+Tailwind CSS + React Router single-page frontend. The two are fully
+independent — separate codebases, separate deploys, talking only over
+HTTPS/JSON.
 
 ```
-backend/    Django + Django REST Framework API (merge into your existing repo — see backend/MERGE_INSTRUCTIONS.md)
-frontend/   React + Vite + Tailwind + React Router SPA (new, standalone)
+muddo_rewrite/
+├── backend/     Django + DRF API (standalone, deployable on its own)
+└── frontend/    React + Vite SPA (standalone, deployable on its own)
 ```
 
-## Status
-- Backend: full DRF API layer (serializers, views, urls, JWT auth, permissions) built against your existing models/migrations. Not yet merged into your live repo — follow `backend/MERGE_INSTRUCTIONS.md`.
-- Frontend: builds cleanly (`npm run build` verified). Public site, agent portal, and admin panel are all wired to the real API endpoints above. No mock data anywhere — every page fetches from `/api/v1/...`.
+---
 
-## Images — status: DONE, real photography is in
-All real images you sent are placed under `frontend/public/` and `frontend/public/images/` and are wired into the actual pages (not just sitting there unused):
+## 1. Architecture at a glance
 
-- **Logo** — `public/logo_full.png` uses your letterhead/business-card asset (the ChatGPT-generated one), since it's the clean definitive brand mark.
-- **Homepage** — hero (`hero_home.jpg`), category tiles, and a real "Field-Tested" photo pair (`why_quality.jpg` + `why_equipment.jpg`) restored from the original design.
-- **Product category pages** — real hero photography per category (`hero_pesticides.jpg`, `hero_herbicides.jpg`, `hero_fungicides.jpg`).
-- **About page** — hero banner, a trust/handshake strip, and the "Who We Are" photo now uses the real greenhouse tomato shot (`about_side.jpg`) instead of a placeholder wordmark.
-- **Contact page** — real hero banner (`hero_contact_banner.png`).
-- **Login page** — now a genuine 4-slide auto-advancing carousel (Pesticides → Herbicides → Fungicides → Fertilizers), matching the original site's feature, using your real category photos.
-- **Admin & Agent dashboards** — real branded banners (`banner_admin.png`, `banner_agent.png`) at the top of each, restored from the original design.
-- **Products** — every seeded product now points at its real uploaded photo (`product_muddosate.jpg`, `product_acelemectin.jpg`, etc.) via an updated `seed_data.py`.
+| Layer | Stack | Role |
+|---|---|---|
+| **Backend** | Django 4.2 + DRF + SimpleJWT + Postgres (Supabase) | Pure JSON API. No HTML rendering except Django's own `/django-admin/` (kept as a break-glass tool). |
+| **Frontend** | React 18 + Vite + Tailwind CSS + React Router 6 | Public site, agent portal (`/portal`), admin panel (`/admin`) — all one SPA, route-guarded by role. |
+| **Auth** | JWT (access + refresh, `djangorestframework-simplejwt`) | Server determines role (`admin` / `agent` / public) from the authenticated user — never trusts a client-asserted role. |
+| **Media** | Local disk (dev) or S3-compatible bucket (prod, optional) | Product photos uploaded through the admin panel. Seed-data images live in the frontend's own `public/images/` folder, not Django. |
+| **Chat** | Polling (3s interval), not WebSockets | Deliberate choice — matches the original site's behavior, avoids the added infra (Redis, ASGI server) a real-time upgrade would need for the traffic this site sees. |
 
-### One thing I changed and want to flag, not hide
-Your image set didn't include a "Fertilizers & Equipment" category hero — I used `sprayer_field_application.png` (renamed to `hero_fertilizers.jpg`) since it's the closest thematic fit (equipment, in-field). If you'd rather use something else there, it's a one-file swap.
+**Why separate origins for images matters:** seed-data product photos are
+served from the **frontend's** `public/images/` folder (its own origin),
+while photos uploaded through the admin panel are served from the
+**backend's** `MEDIA_URL` (its own origin, or S3 if configured). The
+product serializer (`backend/apps/products/serializers.py`) only
+absolutizes the second kind — seed-data paths are left exactly as
+`/images/...` so the browser resolves them against the frontend, not the
+API. This is a common decoupled-architecture gotcha; it's already
+handled correctly.
 
-### One real gap, not silently patched
-**NPK 17:17:17** has no uploaded product photo. `seed_data.py` currently points it at `products_all.jpg` (the same generic fallback the rest of the site already uses for any missing product image) rather than a broken path. Send a real photo whenever you have one and it's a one-line swap in `seed_data.py`.
+---
 
-### Unused-but-available assets
-Your batch included several marketing flyers (`flyer_*.png`), packaging shots (`photo_boxes_*.png`, `photo_*_plain.png`, `photo_toplaxlyn_bag.png`), and standalone pest/crop photography (`pest_collage_*.png`, `pest_whitefly.jpg`, `tomato_*.png`, `tomatoes_greenhouse.png`, `photo_rollup_banner.png`, `photo_shop_shelf.png`, `photo_ourproducts_collage.png`) that aren't wired into any page yet — they're all copied into `frontend/public/images/` so they're available if you want a "downloads" section, a product gallery with multiple photos, or a blog/news section later.
+## 2. Local development
 
-## Round 3 fixes (this update)
-
-**Critical bug, now fixed:** Tailwind spacing values like `w-11.5`, `gap-4.5`, `p-6.5` used throughout the components aren't in Tailwind's default scale — they silently generate **zero CSS**, which is what caused the collapsed spacing, missing card borders, and broken layout in your screenshots. Fixed by extending the Tailwind config to generate the full half-integer spacing scale globally (`tailwind.config.js`), rather than hunting down and hand-editing every occurrence across ~40 files. Also fixed a matching bug (`duration-600`, not a valid Tailwind duration step) in the scroll-reveal animation.
-
-**Deploy failure, now fixed:** Render couldn't find `manage.py` because the backend package only ever shipped the new API-layer files, on the assumption you'd merge them into an existing repo by hand. Since you're deploying `backend/` as its own service root, it's now a **complete standalone Django project** — every model, migration, admin config, and management command reconstructed and verified (see `backend/MERGE_INSTRUCTIONS.md` for the full account, and the verification log below).
-
-**Content changes, as requested:**
-- FAQs and company contact details (phone, email, address, hours) are now **static, baked into the frontend** (`src/data/faqs.js`, `src/data/siteConfig.js`) — no longer fetched from the backend, no longer editable through the admin panel. This also removes a network round-trip from every page load.
-- The admin "Site Content" page/route has been removed accordingly.
-- Logo split into two assets: `public/logo_icon.png` (the real circular MACL mark you sent — used everywhere small: navbar, sidebars, login) and `public/logo_full.png` (the letterhead/business card — now shown prominently in its own bordered container on the homepage, between the hero and the product categories).
-- Homepage hero text is explicitly left-aligned.
-- Fixed the "MACL Difference" section — restored the missing subtitle line and fixed the broken card layout (same root cause as the spacing bug above).
-
-**Speed and animation, as requested:**
-- Route-based code splitting (`React.lazy` per page) — the homepage now loads ~270KB of JS instead of the previous single ~712KB bundle; Leaflet and Chart.js only download on the pages that actually use them.
-- Restored: scroll-reveal-on-view for cards and sections, a page fade-in on every route change, animated count-up numbers on the homepage stats, a scroll-progress bar, and a back-to-top button — all present in the original site and dropped in the first React pass.
-
-## Backend fix that came out of the image work
-Seeded `image_url` values previously pointed at `/static/images/...` — a path that only made sense when Django rendered the templates itself. Now that the frontend is a separate origin, I:
-1. Updated `seed_data.py` to use `/images/...` (matching the React app's own `public/images/` convention).
-2. Fixed the DRF product serializer so it only absolutizes image URLs that are actually served by the Django backend (`MEDIA_URL`-prefixed, i.e. real uploaded files) — plain `/images/...` paths from seed data are left untouched so the browser resolves them against the frontend's own origin instead of incorrectly trying the API's domain.
-
-## Running locally
-
-**Backend:**
+### Backend
 ```bash
 cd backend
 pip install -r requirements.txt
-cp .env.example .env   # fill in your Supabase DATABASE_URL + a real SECRET_KEY
+cp .env.example .env
+# edit .env — at minimum: DJANGO_SECRET_KEY, DATABASE_URL (or leave blank to use local sqlite)
 python manage.py migrate
 python manage.py seed_data
-python manage.py runserver          # http://127.0.0.1:8000
+python manage.py runserver
 ```
+Runs at `http://127.0.0.1:8000`. Verify with:
+```bash
+curl http://127.0.0.1:8000/api/v1/products/
+```
+Default seeded accounts:
 
-**Frontend:**
+| Role | Username | Password |
+|---|---|---|
+| Admin | `admin` | `muddo@admin2024` |
+| Agent | `alice` / `robert` / `grace` / `patrick` | `agent@2024` |
+
+**Change these before any real deploy** — see Settings → Change Password
+in the admin panel once logged in.
+
+### Frontend
 ```bash
 cd frontend
 npm install
-cp .env.example .env   # VITE_API_BASE_URL should point at the backend above
-npm run dev            # http://localhost:5173
+cp .env.example .env
+# VITE_API_BASE_URL should point at the backend above (http://127.0.0.1:8000/api/v1 for local dev)
+npm run dev
 ```
+Runs at `http://localhost:5173`.
 
-Log in at `/login` with your existing admin/agent seed credentials —
-the login screen now hits `/api/v1/auth/login/` and gets back a JWT pair,
-no more Django session cookies.
+---
 
-## Page coverage (React)
-**Public:** Home, Product category (pesticides/herbicides/fungicides/other), Product detail, Contact, Distributors (Leaflet map), About + FAQ, Track enquiry, Search, Compare, Login, 404.
-**Agent portal:** Dashboard (supply requests), Chat, Profile.
-**Admin panel:** Dashboard (Chart.js), Products CRUD, Inventory, Distributors CRUD, Enquiries, Supply Requests, Agents, Chat, Site Content + FAQ, Newsletter, CSV Import, Settings (password change, agent password reset, system info).
+## 3. Deployment
 
-Every one of these pages calls the real `/api/v1/...` endpoints — no mock data anywhere.
+### 3.1 Backend → Render (or any Python host)
 
-## What's next
-- Drop in real images (see above) and the site will look complete immediately — all image paths are already wired.
-- Production deploy: backend to Render/Railway (Postgres via Supabase already wired), frontend to Cloudflare Pages/Netlify/Vercel as a static build (`npm run build` → `dist/`), pointed at the deployed API via `VITE_API_BASE_URL`.
-- Optional polish once you've reviewed: code-splitting the frontend bundle (currently one ~700KB chunk — Vite warns about this but it's not broken, just not optimally lazy-loaded), and deleting the now-dead Django template files per `backend/MERGE_INSTRUCTIONS.md` section 3 once you're confident the React pages cover everything you need.
+The `backend/` folder is a **complete, standalone Django project** —
+`manage.py`, all models, all migrations, admin configs, and management
+commands are present. Deploy it as-is; no merging into another repo
+needed.
+
+**Dashboard-configured Render service:**
+- **Root Directory:** `backend`
+- **Build Command:**
+  ```
+  pip install -r requirements.txt && python manage.py check --fail-level ERROR && python manage.py migrate --noinput && python manage.py collectstatic --noinput && python manage.py seed_data
+  ```
+- **Start Command:**
+  ```
+  gunicorn muddo_project.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 120
+  ```
+
+**Or use the included Blueprint** (`backend/render.yaml`) if you'd rather
+manage the service definition from the repo.
+
+**Required environment variables** (see `backend/.env.example` for the full list):
+
+| Variable | Notes |
+|---|---|
+| `DJANGO_SECRET_KEY` | Generate a real one — Render's "Generate Value" button works, or `python -c "import secrets; print(secrets.token_urlsafe(50))"` |
+| `DEBUG` | `False` in production |
+| `ALLOWED_HOSTS` | Your Render service hostname, e.g. `muddo-agro-api.onrender.com` |
+| `DATABASE_URL` | Your Supabase Postgres connection string (see 3.3 below) |
+| `CORS_ALLOWED_ORIGINS` | Your deployed frontend origin(s), comma-separated |
+| `CSRF_TRUSTED_ORIGINS` | Same, if you also touch Django's own admin over HTTPS |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | Gmail SMTP + App Password, for contact-form email notifications |
+| `WHATSAPP_NUMBER` | Digits only, e.g. `256772507582` |
+
+Everything under "Optional: S3-compatible media storage" in `.env.example`
+can be left blank — uploaded product photos and chat attachments fall
+back to local disk, which works fine except that Render's free tier disk
+is **ephemeral** (wiped on redeploy). Fill in the AWS/S3 vars (Supabase
+Storage's S3-compatible endpoint works too, via `AWS_S3_ENDPOINT_URL`) if
+you want uploads to persist across deploys.
+
+### 3.2 Frontend → Cloudflare Pages / Netlify / Vercel
+
+```bash
+cd frontend
+npm install
+npm run build      # outputs to dist/
+```
+Deploy `dist/` as a static site. Set the build command to `npm run build`
+and the output directory to `dist` on whichever platform you use — all
+three (Cloudflare Pages, Netlify, Vercel) support this directly from the
+repo with zero extra config beyond that.
+
+**Required environment variable:**
+
+| Variable | Notes |
+|---|---|
+| `VITE_API_BASE_URL` | Your deployed backend's API root, e.g. `https://muddo-agro-api.onrender.com/api/v1` |
+
+**SPA routing:** since this is a client-side-routed single-page app, the
+host needs to serve `index.html` for any unmatched path (so
+`/products/pesticides` loads correctly on a hard refresh, not a 404).
+Netlify/Vercel/Cloudflare Pages all auto-detect this for Vite projects;
+if not, add a redirect rule sending `/*` → `/index.html` with a 200 status.
+
+### 3.3 Database → Supabase Postgres
+
+1. Create a Supabase project.
+2. Project Settings → Database → Connection string → **URI**. Use the
+   direct connection (port `5432`) for a long-lived backend host like
+   Render; use the Session Pooler (port `6543`) for serverless/edge
+   deploys.
+3. Paste that string as `DATABASE_URL` in the backend's environment.
+   Supabase's connection string already includes `sslmode=require`, so
+   no extra SSL configuration is needed.
+4. Run `python manage.py migrate` once against it (the Render build
+   command already does this on every deploy — safe, migrations are
+   idempotent).
+
+### 3.4 Post-deploy checklist
+- [ ] Changed the default admin password (Settings → Change Admin Password)
+- [ ] Changed all four demo agent passwords, or deleted the demo accounts and created real ones
+- [ ] `DEBUG=False` confirmed on the backend
+- [ ] Real `DJANGO_SECRET_KEY` set (not the dev fallback)
+- [ ] `CORS_ALLOWED_ORIGINS` on the backend matches the frontend's real deployed URL exactly (including `https://`)
+- [ ] `VITE_API_BASE_URL` on the frontend points at the real deployed backend URL
+- [ ] Real product images dropped into `frontend/public/images/` (see §4)
+- [ ] Contact form tested end-to-end (submits, arrives by email, reference number resolves on the Track page)
+- [ ] PDF spec sheet download tested on a real product
+
+---
+
+## 4. Images
+
+Real photography is already wired in under `frontend/public/` and
+`frontend/public/images/` — nothing here is a placeholder.
+
+- `public/logo_icon.png` — the real circular MACL mark, used everywhere small (navbar, sidebars, login screen, footer).
+- `public/logo_full.png` — the full letterhead/business card, shown in its own section on the homepage, right before the footer.
+- `public/images/hero_*.jpg` — category hero photography (pesticides, herbicides, fungicides).
+- `public/images/product_*.jpg` — real product photos, one per catalogue item, referenced by `seed_data.py`.
+- `public/images/banner_admin.png` / `banner_agent.png` — the branded banners at the top of the admin and agent dashboards.
+- `public/images/why_quality.jpg` / `why_equipment.jpg` — the homepage "Field-Tested" photo pair.
+- `public/images/about_side.jpg`, `handshake.jpg`, `hero_about_banner.png`, `hero_contact_banner.png` — About/Contact page imagery.
+
+**One known gap:** there's no dedicated "Others & Equipment" category
+hero photo — `sprayer_field_application.png` stands in for it
+(`hero_fertilizers.jpg`), since it's the closest thematic fit. Swap it
+for a dedicated shot whenever you have one; it's a one-file replacement,
+no code change needed.
+
+**To add or change a product photo:** either upload it through the admin
+panel's Product edit screen (stored via the backend, works immediately),
+or drop a file into `frontend/public/images/` and point that product's
+`image_url` at `/images/yourfile.jpg` in `seed_data.py` (re-run
+`python manage.py seed_data` — it only fills in missing products, it
+never overwrites existing ones, so editing an existing product's image
+is done through the admin panel, not by re-seeding).
+
+---
+
+## 5. Content that's static vs. dynamic — and why
+
+Two kinds of content are deliberately **not** backend-driven:
+
+- **FAQs** (`frontend/src/data/faqs.js`) — grouped into five sections
+  (General & Location, Product Verification & Quality, Products & Farm
+  Consultation, Orders/Wholesale & Delivery, Support/Returns & Issues).
+- **Company contact details** (`frontend/src/data/siteConfig.js`) —
+  phone, email, address, business hours, WhatsApp number, Facebook URL.
+
+These used to be fetched from the backend and editable through an admin
+"Site Content" page. That's been removed on request — this content
+changes rarely, so baking it into the frontend build removes a network
+round-trip from every single page load and removes a dependency on the
+API being reachable just to render the footer. **To change either, edit
+the file directly and redeploy the frontend** — it's not a database
+change and won't show up by re-running `seed_data`.
+
+Everything else (products, distributors, agents, supply requests,
+messages, contact-form submissions, inventory) is fully dynamic,
+database-backed, and admin-editable through the panel as normal.
+
+---
+
+## 6. Product catalogue notes
+
+- **12 real products** across pesticides, herbicides, fungicides, and
+  "Others & Equipment" (a knapsack sprayer). NPK 17:17:17 and Foliar
+  Boost 20-20-20+TE were removed — confirmed not to be real Muddo
+  products.
+- **Featured / "Coming Soon" products** — a product can be marked
+  `is_featured` (checkbox in the admin Product edit form). While
+  featured, it shows a green "Featured — Coming Soon" sticker instead of
+  a stock badge, is excluded from the random "Popular Products" homepage
+  pick, and appears in its own "Coming Soon" section on the homepage as
+  well as normally within its category page. **M-D FOS 70SC** and **MD
+  BENZO-MECTIN 5WDG** currently ship as featured/pre-stock. When real
+  stock arrives, an admin unchecks "Featured" on that product's edit
+  form and sets its stock quantity via Inventory — it then behaves like
+  any other in-stock product automatically.
+- **Description vs. Usage Instructions** — each product has two separate
+  text fields: `description` (a short paragraph, shown truncated on the
+  product card) and `usage_instructions` (one practical step per line,
+  written for knapsack-sprayer application — the way most Ugandan
+  smallholders actually mix and spray — shown as a numbered "How To Use"
+  list on the product detail page only). Edit both from the admin
+  product form.
+
+---
+
+## 7. Troubleshooting
+
+**"Can't open file '.../backend/manage.py'" on Render** — fixed. If you
+see this again, it means Root Directory in the Render dashboard doesn't
+point at the folder containing `manage.py`; it should be exactly `backend`.
+
+**Frontend shows a broken/collapsed layout (odd spacing, missing card
+borders)** — this was a real bug in an earlier round: several Tailwind
+utility classes used fractional values (`w-11.5`, `gap-4.5`, etc.) that
+aren't in Tailwind's default scale, which silently produced no CSS at
+all. Fixed by extending the scale in `frontend/tailwind.config.js`
+(`halfStepSpacing()`). If a similarly-broken class shows up again, check
+it against Tailwind's actual default scale before assuming the design is
+wrong — it's often just an unsupported class name.
+
+**CORS errors in the browser console** — `CORS_ALLOWED_ORIGINS` on the
+backend must exactly match the frontend's deployed origin, including the
+scheme (`https://`) and no trailing slash.
+
+**Images 404 in production but work locally** — check whether the path
+is `/images/...` (frontend-served, seed data) or `/media/...`
+(backend-served, uploaded via admin). A `/media/...` path 404ing usually
+means S3 env vars aren't set and Render's ephemeral disk was wiped on
+the last redeploy — see §3.1.
+
+**Slow initial load** — the frontend is route-code-split
+(`React.lazy` per page in `App.jsx`) and vendor-chunked (Leaflet and
+Chart.js only load on the pages that use them, in `vite.config.js`). If
+it feels slow again, check the Network tab for what's actually loading
+before assuming it's a bundle-size regression — it may just be a slow
+API response instead.
+
+---
+
+## 8. What's inside each package (for a from-scratch read)
+
+**`backend/`** — every app (`core`, `products`, `inventory`, `agents`,
+`requests_app`, `messaging`, `distributors`, `analytics`) has its own
+`models.py`, `migrations/`, `admin.py`, `apps.py`, plus the new DRF layer
+(`serializers.py`, `api_views.py`, `urls_api.py`). Shared pieces:
+`apps/core/permissions.py` (role-based access, the actual security
+boundary — not the frontend route guards, which are UX-only),
+`apps/core/exceptions.py` (consistent error responses, never leaks
+internals), `apps/core/auth_views.py` (JWT login/refresh/me).
+
+**`frontend/`** — `src/pages/public/`, `src/pages/portal/`,
+`src/pages/admin/` for the three route trees; `src/layouts/` for their
+shared chrome; `src/api/` for the axios client (with automatic JWT
+refresh) and per-resource service functions; `src/components/` for
+shared UI (`ProductCard`, `Icon`, `ChatWindow`, `Reveal`, `CountUp`);
+`src/data/` for the static FAQ/site-config content described in §5.

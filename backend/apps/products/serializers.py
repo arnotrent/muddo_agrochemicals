@@ -33,7 +33,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'category', 'category_display', 'description',
             'active_ingredient', 'crops', 'packing', 'display_image',
-            'stock_qty', 'stock_status',
+            'stock_qty', 'stock_status', 'is_featured',
         ]
 
     def get_display_image(self, obj):
@@ -42,7 +42,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 class ProductDetailSerializer(ProductListSerializer):
     class Meta(ProductListSerializer.Meta):
-        fields = ProductListSerializer.Meta.fields + ['formulation', 'dosage', 'created_at']
+        fields = ProductListSerializer.Meta.fields + ['formulation', 'dosage', 'usage_instructions', 'created_at']
 
 
 class ProductAdminSerializer(serializers.ModelSerializer):
@@ -55,8 +55,8 @@ class ProductAdminSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'category', 'description', 'active_ingredient', 'formulation',
-            'crops', 'dosage', 'packing', 'image_url', 'image_file', 'display_image',
+            'id', 'name', 'category', 'description', 'usage_instructions', 'active_ingredient', 'formulation',
+            'crops', 'dosage', 'packing', 'image_url', 'image_file', 'display_image', 'is_featured',
             'created_at', 'stock_qty', 'reorder_level', 'unit',
         ]
         read_only_fields = ['id', 'created_at']

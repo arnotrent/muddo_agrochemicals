@@ -5,100 +5,126 @@ from apps.inventory.models import Inventory
 from apps.distributors.models import Distributor
 from apps.agents.models import Agent
 
-# NOTE on image paths: these are now '/images/...' (no leading 'static/'),
+# NOTE on image paths: these are '/images/...' (no leading 'static/'),
 # because the frontend has moved to its own React app serving files from
-# frontend/public/images/ on its OWN origin. In the old server-rendered
-# setup '/static/images/...' resolved against the Django server that also
-# rendered the page; that's no longer true now that the API and the SPA
-# are two separate origins. The DRF serializer (apps/products/serializers.py)
-# deliberately leaves these paths untouched rather than absolutizing them
-# against the API's domain, so the browser resolves them against the
-# frontend's own origin correctly.
+# frontend/public/images/ on its OWN origin — see apps/products/serializers.py
+# for why these paths are deliberately left un-absolutized against the API.
+#
+# NOTE on 'usage' below: each entry is a short list of practical,
+# knapsack-sprayer-oriented application steps (the way most Ugandan
+# smallholder farmers actually mix and spray), joined into
+# Product.usage_instructions as one bullet per line. This is kept
+# separate from `description`, which stays a short narrative — the
+# product detail page renders them as two distinct sections.
 PRODUCTS=[
  {'name':'MUDDOSATE 480SL','category':'herbicide','img':'/images/product_muddosate.jpg','stock':120,'reorder':20,
   'active_ingredient':'Glyphosate 480 g/l','formulation':'Soluble Liquid (SL)',
   'crops':'All crops pre-plant/directed, Plantations, Couch grass, Kikuyu grass, Non-crop areas',
-  'dosage':'3–6 L/ha in 200–400 L water. Annual grasses: 3–4 L/ha. Perennial: 5–6 L/ha.',
+  'dosage':'150–200ml per 20L knapsack sprayer',
   'packing':'100ml, 500ml, 1L, 5L, 20L',
-  'description':'Couch grass and Kikuyu grass that keep coming back are exactly what MUDDOSATE was built to end. It travels down through the leaf into the root system, so the weed doesn\'t just wilt — it stops regrowing. MACL\'s best-selling herbicide, and the one most repeat customers ask for by name.'},
+  'description':'A highly concentrated, non-selective systemic herbicide. Once sprayed, it is absorbed through the green foliage and translocates all the way down to the root system, completely destroying both annual and perennial grasses and deep-rooted weeds — the reason it\'s MACL\'s best-selling herbicide and the one most repeat customers ask for by name.',
+  'usage':['Mix 150ml to 200ml of Muddosate in 20 litres of clean water.',
+           'Apply as a pre-planting spray to completely clear land fields, or use carefully as a directed spray between rows of established tree/cane crops.',
+           'Crucial Rule: avoid any spray drift onto the green parts of your crops, as this non-selective chemical will destroy any green plant it touches.']},
  {'name':'MD MAIZE PLUS 40OD','category':'herbicide','img':'/images/product_maizeplus.jpg','stock':95,'reorder':15,
   'active_ingredient':'Nicosulfuron 40 g/l','formulation':'Oil Dispersion (OD)',
   'crops':'Maize — selective, safe on the crop at label rates',
-  'dosage':'0.5–0.75 L/ha at 2–6 leaf stage of weeds. Maximum 1 L/ha.',
+  'dosage':'40–50ml per 20L knapsack sprayer',
   'packing':'100ml, 250ml, 500ml, 1L, 5L',
-  'description':'Spray over standing maize without fear — MD MAIZE PLUS takes out grass and broadleaf weeds while leaving the crop untouched. One post-emergence pass at the 2–6 leaf stage is usually all a maize field needs for the season.'},
+  'description':'A premium, highly selective post-emergence herbicide engineered so growers can spray directly over standing maize without fear — it dries up competitive grasses and broadleaf weeds while remaining entirely safe on the crop itself. One pass at the 2–6 leaf stage is usually all a maize field needs for the season.',
+  'usage':['Mix 40ml to 50ml of the fluid per 20-litre knapsack sprayer.',
+           'Apply uniformly over the entire field when the maize is between the 2 to 6 leaf stage.',
+           'Knocks out aggressive grasses and broadleaf weeds — including spear grass, couch grass and wild finger millet — directly within standing maize gardens.']},
  {'name':'MAX 2.4-D 720SL','category':'herbicide','img':'/images/product_max24d.jpg','stock':140,'reorder':25,
   'active_ingredient':'2,4-D Dimethylamine salt 720 g/l','formulation':'Soluble Liquid (SL)',
   'crops':'Maize, Wheat, Sorghum, Sugarcane, Rice, Pastures, Plantation crops',
-  'dosage':'1.0–2.0 L/ha in 200–400 L water. Apply at 4–6 leaf stage of weeds.',
+  'dosage':'50–70ml per 20L knapsack sprayer',
   'packing':'100ml, 250ml, 500ml, 1L, 5L, 20L',
-  'description':'A cereal farmer\'s standby for broadleaf weeds — MAX 2.4-D clears pigweed and similar competitors out of maize, sorghum and rice without setting the crop back. Works fast, priced for the volumes cereal growers actually spray.'},
+  'description':'A systemic, post-emergence herbicide and a vital standby tool for cereal farmers, engineered to selectively eliminate tough broadleaf weeds — pigweed, blackjack and similar competitors — without disrupting the growing crop. Works fast, priced for the volumes cereal growers actually spray.',
+  'usage':['Mix 50ml to 70ml of the solution in 20 litres of water.',
+           'Spray directly over standing grain fields when weeds are small and actively growing.',
+           'Clears pigweed, blackjack and similar broadleaf competitors out of maize, wheat, sorghum, sugarcane and rice fields.']},
  {'name':'MD ACELEMECTIN 48EC','category':'pesticide','img':'/images/product_acelemectin.jpg','stock':88,'reorder':15,
   'active_ingredient':'Abamectin 18 g/l + Acetamiprid 30 g/l','formulation':'Emulsifiable Concentrate (EC)',
   'crops':'Cotton, Vegetables, Watermelon, Passion Fruit, Tomatoes, Coffee, Beans',
-  'dosage':'500 ml–1 L/ha in 200 L water. Begin at first sign of infestation.',
+  'dosage':'20–30ml per 20L knapsack sprayer',
   'packing':'100ml, 250ml, 500ml, 1L',
-  'description':'Whitefly, aphids and bollworm rarely show up alone — that\'s why MD ACELEMECTIN pairs two active ingredients in one spray. Passion fruit and watermelon growers reach for this first when a pest problem is spreading fast.'},
+  'description':'A dual-action, broad-spectrum insecticide combining systemic control — absorbed by the plant to kill feeding insects — with direct contact action, making it exceptionally effective against tough, piercing-sucking pests. Passion fruit and watermelon growers reach for this first when a pest problem is spreading fast.',
+  'usage':['Mix 20ml to 30ml of the product per 20-litre knapsack sprayer of clean water.',
+           'Apply thoroughly onto the foliage as soon as the first signs of pest infestation appear.',
+           'Targeted pests include thrips, whiteflies, aphids, leafminers and caterpillars on crops like tomatoes, watermelons and passion fruits.']},
  {'name':'MD FOS 48EC','category':'pesticide','img':'/images/product_mdfos.jpg','stock':105,'reorder':20,
   'active_ingredient':'Chlorpyrifos 480 g/l','formulation':'Emulsifiable Concentrate (EC)',
   'crops':'Maize, Vegetables, Fruits, Beans, Coffee, Cotton, Tobacco, Groundnuts',
-  'dosage':'1–2 L/ha foliar; 3–4 L/ha soil drench in 200–400 L water.',
+  'dosage':'40ml per 20L knapsack sprayer',
   'packing':'100ml, 250ml, 500ml, 1L, 5L',
-  'description':'Stem borers and army worms hide where sprays don\'t usually reach — MD FOS works both above ground as a foliar spray and below it as a soil drench, so the pest has nowhere left to hide in maize or groundnut fields.'},
- {'name':'M-D FOS 70SC','category':'pesticide','img':'/images/product_mdfos70sc.jpg','stock':70,'reorder':15,
+  'description':'A heavy-duty, contact and stomach-action insecticide that provides rapid knockdown and prolonged residual control against aggressive soil-dwelling pests and chewing insects. Works both above ground as a foliar spray and below it as a soil drench, so stem borers and army worms have nowhere left to hide.',
+  'usage':['Mix 40ml of the chemical per 20 litres of water.',
+           'For soil-borne pests, apply as a direct drench around the root zone of young plants. For surface insects, spray evenly on the foliage.',
+           'Highly recommended for controlling armyworms, cutworms, termites and root grubs in maize, cereal crops and fruit orchards.']},
+ {'name':'M-D FOS 70SC','category':'pesticide','img':'/images/product_mdfos70sc.jpg','stock':0,'reorder':15,'featured':True,
   'active_ingredient':'Chlorpyrifos + Cypermethrin (dual-action SC blend)','formulation':'Suspension Concentrate (SC)',
   'crops':'Cabbages, tomatoes, maize and other field/vegetable crops; also for household and public-health pest control',
-  'dosage':'Shake well before use. Dilute per label rate in a part-filled spray tank, then top up and agitate before applying as a full-coverage spray.',
+  'dosage':'30–40ml per 20L knapsack sprayer',
   'packing':'100ml, 250ml, 500ml, 1L',
-  'description':'The newer, stronger sibling to MD FOS — this dual-action SC blend gives a fast knock-down and then keeps working long after the spray dries. Built for cabbage, tomato and maize pests, but just as at home clearing bed bugs, ants and cockroaches around the house.'},
- {'name':'MD BENZO-MECTIN 5WDG','category':'pesticide','img':'/images/product_benzomectin.jpg','stock':45,'reorder':10,
+  'description':'The newer, much stronger sibling to MD FOS 48EC — a highly concentrated dual-action SC blend of Chlorpyrifos and Cypermethrin that delivers rapid contact knockdown on the plant surface while providing a long-lasting chemical barrier that keeps working for days. Currently being finalised for stock — this listing is a preview so you know what\'s coming.',
+  'usage':['Mix 30ml to 40ml of the SC fluid into a 20-litre water sprayer.',
+           'Spray thoroughly across the plant leaves, making sure to coat the undersides where pests hide.',
+           'Highly effective against armyworms, caterpillars and chewing pests on cabbages, tomatoes, maize and other vegetable crops.']},
+ {'name':'MD BENZO-MECTIN 5WDG','category':'pesticide','img':'/images/product_benzomectin.jpg','stock':0,'reorder':10,'featured':True,
   'active_ingredient':'Emamectin Benzoate 5%','formulation':'Water-Dispersible Granules (WDG)',
   'crops':'Cabbages, broccoli and brassicas, tomatoes, maize, sorghum, leafy greens',
-  'dosage':'Pre-dissolve the granules in a small bucket of water before adding to the spray tank. Apply per label rate, targeting early larval stages for best control.',
+  'dosage':'1 sachet per 20L knapsack sprayer',
   'packing':'5g, 10g, 25g sachets',
-  'description':'Fall Armyworm and Tuta Absoluta build resistance fast — that\'s exactly what MD Benzo-Mectin is for. Its granules dissolve into a stomach poison that hard-to-kill caterpillars and moths can\'t easily shrug off. Rotate it in with MD FOS so pests never get the chance to adapt to either one.'},
+  'description':'A powerful, localised water-dispersible granule pesticide specifically engineered to target destructive pests — Fall Armyworm and Tuta Absoluta chief among them — that rapidly build up resistance to traditional liquid sprays. The granules dissolve quickly in water to deliver deep stomach and contact action. Currently being finalised for stock — this listing is a preview so you know what\'s coming.',
+  'usage':['Dissolve one sachet (adjusting dosage based on sachet size and infestation severity) into 20 litres of clean water and mix thoroughly.',
+           'Spray directly onto crops at the very first sight of leaf damage or larvae.',
+           'Primarily used to eradicate Fall Armyworm and Tuta absoluta on cabbages, broccoli, brassicas and tomatoes.']},
  {'name':'MD THION 350EC','category':'pesticide','img':'/images/product_thion.jpg','stock':70,'reorder':12,
   'active_ingredient':'Dimethoate 350 g/l','formulation':'Emulsifiable Concentrate (EC)',
   'crops':'Vegetables, Coffee, Tea, Citrus, Tobacco, Beans, Groundnuts',
-  'dosage':'500 ml–1 L/ha in 200–400 L water.',
+  'dosage':'500ml–1L in 200–400L water per acre',
   'packing':'100ml, 250ml, 500ml, 1L',
-  'description':'Moves through the plant\'s sap, not just the surface — so MD THION keeps working against thrips and mites even on the new growth that emerges after spraying. A coffee and citrus grower\'s dependable, budget-friendly option.'},
+  'description':'Moves through the plant\'s sap, not just the surface — so MD THION keeps working against thrips and mites even on the new growth that emerges after spraying. A coffee and citrus grower\'s dependable, budget-friendly option.',
+  'usage':['Mix 500ml to 1 litre of the concentrate in 200–400 litres of water for full-field coverage, or scale down proportionally for a 20-litre knapsack sprayer.',
+           'Apply at first sign of thrips or mite pressure, covering both leaf surfaces.',
+           'Well suited to vegetables, coffee, tea and citrus where sap-feeding pests are the main concern.']},
  {'name':'MD THOATE 40EC','category':'pesticide','img':'/images/product_thoate.jpg','stock':62,'reorder':10,
   'active_ingredient':'Dimethoate 400 g/l','formulation':'Emulsifiable Concentrate (EC)',
   'crops':'Coffee, Vegetables, Cotton, Cereals, Tobacco, Tea',
-  'dosage':'500 ml/ha in 200–400 L water. Apply at first sign of pest pressure.',
+  'dosage':'30–40ml per 20L knapsack sprayer',
   'packing':'100ml, 500ml, 1L, 5L',
-  'description':'A dual-action insecticide and acaricide in one bottle — MD THOATE handles both the sucking insects and the mites that show up together on tea and cotton, so there\'s no need to stock two separate sprays.'},
+  'description':'An organophosphate-based systemic pesticide engineered to combat persistent, sap-sucking insects. It moves through the vascular system of the plant, ensuring that even pests hiding on the undersides of leaves or inside dense canopies are eliminated — a dual-action insecticide and acaricide in one bottle.',
+  'usage':['Dilute 30ml to 40ml of the liquid chemical in a standard 20-litre water sprayer.',
+           'Spray uniformly over the crop canopy during the early morning or late evening to minimise evaporation and avoid beneficial pollinators.',
+           'Primarily used to treat aphids, mealybugs and mites on vegetables and fruit crops.']},
  {'name':'TOP-LAXLY M 72WP','category':'fungicide','img':'/images/product_toplaxym.jpg','stock':115,'reorder':20,
   'active_ingredient':'Metalaxyl-M 4% + Mancozeb 64%','formulation':'Wettable Powder (WP)',
   'crops':'Onions, Tomatoes, French Beans, Watermelon, Potatoes, Peppers, Carrots',
-  'dosage':'2.0–2.5 kg/ha in 400–600 L water. Apply every 7–14 days.',
+  'dosage':'40–50g per 20L knapsack sprayer',
   'packing':'100g, 250g, 500g, 1kg',
-  'description':'When downy mildew shows up overnight after heavy rain, TOP-LAXLY M is what our vegetable growers spray first — it moves systemically through the plant to stop the blight already there while protecting new growth.'},
+  'description':'A highly effective, dual-action preventative and curative fungicide formulated for proactive growers to apply ahead of the rainy season. It coats the leaves to block fungal spore penetration while absorbing into the plant tissue to stop hidden diseases from spreading during humid weather — what our vegetable growers spray first when downy mildew shows up overnight after heavy rain.',
+  'usage':['Mix 40g to 50g of the powder thoroughly in a 20-litre knapsack sprayer with clean water.',
+           'Spray crops evenly before rainy periods or at the absolute first sign of damp weather.',
+           'Targeted diseases include late blight, downy mildew and leaf spots on vegetables, potatoes, grapes, groundnuts and tobacco.']},
  {'name':'MD TOP LAXLYN 72WP','category':'fungicide','img':'/images/product_toplaxlyn.jpg','stock':90,'reorder':15,
   'active_ingredient':'Metalaxyl 8% + Mancozeb 64%','formulation':'Wettable Powder (WP)',
   'crops':'Vegetables, Potatoes, Grapes, Groundnuts, Tobacco',
-  'dosage':'2.5 kg/ha in 500 L water. Apply 10–14 days before expected disease pressure.',
+  'dosage':'40–50g per 20L knapsack sprayer',
   'packing':'250g, 500g, 1kg',
-  'description':'Spray this one ahead of the rains, not after — MD TOP LAXLYN is built for growers who plan for downy mildew and Alternaria blight before symptoms appear, giving potato and grape crops a head start on disease season.'},
- {'name':'NPK 17:17:17','category':'other','img':'/images/products_all.jpg','stock':180,'reorder':30,
-  'active_ingredient':'N 17% + P2O5 17% + K2O 17%','formulation':'Compound Granular',
-  'crops':'All crops — maize, vegetables, coffee, tea, sugarcane, horticulture',
-  'dosage':'200–400 kg/ha basal application at or before planting.',
-  'packing':'1 kg, 5 kg, 25 kg, 50 kg bags',
-  'description':'One bag, three nutrients, equal amounts — NPK 17:17:17 is the basal fertilizer growers apply at planting when they want strong roots and even growth without having to blend separate nitrogen, phosphorus and potash bags themselves.'},
- {'name':'FOLIAR BOOST 20-20-20+TE','category':'other','img':'/images/product_foliarboost.jpg','stock':95,'reorder':15,
-  'active_ingredient':'N 20% + P2O5 20% + K2O 20% + Zn, Fe, Mn, B, Cu','formulation':'Water Soluble Powder',
-  'crops':'Vegetables, Flowers, Fruits, Coffee, Tea, Greenhouse crops',
-  'dosage':'3–5 g/L foliar spray; 2–5 kg/ha through drip irrigation.',
-  'packing':'250g, 500g, 1 kg, 5 kg',
-  'description':'When a crop shows yellowing that soil fertilizer alone won\'t fix, this dissolves straight into the spray tank and gets absorbed through the leaf within hours — the trace elements (zinc, iron, manganese) are what a NPK bag alone can\'t give a stressed greenhouse crop.'},
+  'description':'A highly effective, dual-action preventative and curative fungicide — the same trusted Metalaxyl + Mancozeb combination as TOP-LAXLY M, built for growers who plan for downy mildew and Alternaria blight before symptoms appear, giving potato and grape crops a head start on disease season.',
+  'usage':['Mix 40g to 50g of the powder thoroughly in a 20-litre knapsack sprayer with clean water.',
+           'Spray crops evenly before rainy periods or at the absolute first sign of damp weather.',
+           'Targeted diseases include late blight, downy mildew and leaf spots on vegetables, potatoes, grapes, groundnuts and tobacco.']},
  {'name':'KNAPSACK SPRAYER 16L','category':'other','img':'/images/product_sprayer.jpg','stock':35,'reorder':5,
   'active_ingredient':'N/A — Equipment','formulation':'Manual Knapsack Sprayer',
   'crops':'All field, vegetable and plantation spray applications',
   'dosage':'16-litre tank. Operating pressure: 2–4 bar. Adjustable flat fan nozzle.',
-  'packing':'Per unit',
-  'description':'The sprayer that outlasts a season of daily use — a 16-litre tank, padded straps for the long walk down a row, and an anti-drip nozzle so chemical doesn\'t leak onto your hands between plants. Sold and serviced at every MACL outlet.'},
+  'packing':'Per unit — assembled or unassembled',
+  'description':'Durable, ergonomic, high-pressure manual knapsack sprayers distributed in both fully assembled and unassembled formats. Designed with heavy-duty plastic tanks, comfortable shoulder straps and adjustable nozzles for uniform mist delivery and minimal chemical waste — the sprayer that outlasts a season of daily use, sold and serviced at every MACL outlet.',
+  'usage':['Assemble the lance, hose and handle according to the provided instructional sheet if bought unassembled.',
+           'Pour your pre-mixed chemical solution through the filter basket into the tank, tightly secure the lid, pump the pressure handle smoothly, and adjust the nozzle tip to match your required spray pattern (mist or stream).',
+           'Rinse the entire tank, hose and nozzle with clean water thoroughly after every single use to prevent chemical cross-contamination and corrosion.']},
 ]
 
 DISTRIBUTORS=[
@@ -134,7 +160,12 @@ class Command(BaseCommand):
             if force: Product.objects.all().delete()
             added=0
             for r in PRODUCTS:
-                p,created=Product.objects.get_or_create(name=r['name'],defaults={k:r[k] for k in ('category','description','active_ingredient','formulation','crops','dosage','packing') if k in r}|{'image_url':r.get('img','/images/products_all.jpg')})
+                usage_text = '\n'.join(r.get('usage', []))
+                defaults = {k: r[k] for k in ('category','description','active_ingredient','formulation','crops','dosage','packing') if k in r}
+                defaults['image_url'] = r.get('img','/images/products_all.jpg')
+                defaults['usage_instructions'] = usage_text
+                defaults['is_featured'] = r.get('featured', False)
+                p,created=Product.objects.get_or_create(name=r['name'],defaults=defaults)
                 if created: Inventory.objects.create(product=p,stock_qty=r.get('stock',50),reorder_level=r.get('reorder',10),unit='units'); added+=1
             self.stdout.write(self.style.SUCCESS(f'✓ {added}/{len(PRODUCTS)} products seeded'))
         if not Distributor.objects.exists() or force:

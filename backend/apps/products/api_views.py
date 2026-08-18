@@ -23,7 +23,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     queryset = Product.objects.select_related('inventory').order_by('category', 'name')
     permission_classes = [IsAdminOrReadOnly]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['category']
+    filterset_fields = ['category', 'is_featured']
     search_fields = ['name', 'active_ingredient', 'crops', 'description']
     ordering_fields = ['name', 'created_at']
 

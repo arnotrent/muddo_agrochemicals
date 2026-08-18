@@ -12,15 +12,15 @@ const META = {
     desc: 'Selective and non-selective herbicides for effective weed management in all crops.' },
   fungicides: { category: 'fungicide', title: 'Fungicides', tag: 'Disease Control', icon: 'microscope',
     desc: 'Systemic and contact fungicides for prevention and control of fungal crop diseases.' },
-  other: { category: 'other', title: 'Fertilizers & Equipment', tag: 'Agri Inputs', icon: 'boxes',
-    desc: 'Fertilizers, foliar feeds and spraying equipment to maximise your crop yields.' },
+  other: { category: 'other', title: 'Others & Equipment', tag: 'Agri Inputs', icon: 'boxes',
+    desc: 'Application equipment and other essential agri-inputs — genuine, durable, and serviced at every MACL outlet.' },
 }
 
 const TABS = [
   ['pesticides', 'Pesticides', 'bug'],
   ['herbicides', 'Herbicides', 'seedling'],
   ['fungicides', 'Fungicides', 'microscope'],
-  ['other', 'Fertilizers & Equipment', 'boxes'],
+  ['other', 'Others & Equipment', 'boxes'],
 ]
 
 export default function ProductCategoryPage() {

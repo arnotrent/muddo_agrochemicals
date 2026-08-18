@@ -8,7 +8,7 @@ const CATEGORIES = [
 
 const EMPTY_FORM = {
   name: '', category: 'pesticide', active_ingredient: '', formulation: '', crops: '', dosage: '',
-  packing: '', description: '', stock_qty: 0, reorder_level: 10, image_url: '',
+  packing: '', description: '', usage_instructions: '', stock_qty: 0, reorder_level: 10, image_url: '', is_featured: false,
 }
 
 export default function AdminProductsPage() {
@@ -60,8 +60,8 @@ export default function AdminProductsPage() {
     setEditForm({
       name: p.name, category: p.category, active_ingredient: p.active_ingredient || '',
       formulation: p.formulation || '', crops: p.crops || '', dosage: p.dosage || '',
-      packing: p.packing || '', description: p.description || '', stock_qty: p.stock_qty || 0,
-      reorder_level: 10, image_url: '',
+      packing: p.packing || '', description: p.description || '', usage_instructions: p.usage_instructions || '',
+      stock_qty: p.stock_qty || 0, reorder_level: 10, image_url: '', is_featured: !!p.is_featured,
     })
     setEditImageFile(null)
   }
@@ -125,9 +125,17 @@ export default function AdminProductsPage() {
             <Field label="Or Image URL" value={addForm.image_url} onChange={(v) => setAddForm((f) => ({ ...f, image_url: v }))} placeholder="https://…" />
           </div>
           <div className="mt-3.5">
-            <label className="text-sm font-semibold text-text-2 block mb-1.5">Description</label>
+            <label className="text-sm font-semibold text-text-2 block mb-1.5">Description (short — shown on the product card)</label>
             <textarea value={addForm.description} onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))} rows={3} className="w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 resize-y" />
           </div>
+          <div className="mt-3.5">
+            <label className="text-sm font-semibold text-text-2 block mb-1.5">Usage Instructions (one step per line — shown on the product detail page)</label>
+            <textarea value={addForm.usage_instructions} onChange={(e) => setAddForm((f) => ({ ...f, usage_instructions: e.target.value }))} rows={3} placeholder={'Mix 40ml in 20L of water.\nSpray evenly over the crop canopy.'} className="w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 resize-y" />
+          </div>
+          <label className="mt-3.5 flex items-center gap-2.5 text-sm font-semibold text-text-2 cursor-pointer">
+            <input type="checkbox" checked={addForm.is_featured} onChange={(e) => setAddForm((f) => ({ ...f, is_featured: e.target.checked }))} className="w-4 h-4" />
+            Featured — not yet in stock (shows a "Coming Soon" preview instead of stock status)
+          </label>
           <button disabled={saving} className="mt-4 px-5 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm flex items-center gap-2 disabled:opacity-60">
             <Icon name="plus" />{saving ? 'Saving…' : 'Add Product'}
           </button>
@@ -149,9 +157,13 @@ export default function AdminProductsPage() {
                   <td className="p-3"><strong>{p.name}</strong></td>
                   <td className="p-3">{p.category_display}</td>
                   <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${p.stock_status === 'out' ? 'bg-accent-red/15 text-accent-red' : p.stock_status === 'low' ? 'bg-bg-alt text-accent-blue' : 'bg-accent-green/15 text-accent-green'}`}>
-                      {p.stock_status === 'out' ? 'Out' : p.stock_qty}
-                    </span>
+                    {p.is_featured ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-accent-green/15 text-accent-green flex items-center gap-1 w-fit"><Icon name="star" size="0.7em" />Featured</span>
+                    ) : (
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${p.stock_status === 'out' ? 'bg-accent-red/15 text-accent-red' : p.stock_status === 'low' ? 'bg-bg-alt text-accent-blue' : 'bg-accent-green/15 text-accent-green'}`}>
+                        {p.stock_status === 'out' ? 'Out' : p.stock_qty}
+                      </span>
+                    )}
                   </td>
                   <td className="p-3">
                     <div className="flex gap-1.5">
@@ -191,8 +203,12 @@ export default function AdminProductsPage() {
                 <Field label="Stock Qty" type="number" value={editForm.stock_qty} onChange={(v) => setEditForm((f) => ({ ...f, stock_qty: v }))} />
               </div>
               <div className="mt-3.5">
-                <label className="text-sm font-semibold text-text-2 block mb-1.5">Description</label>
+                <label className="text-sm font-semibold text-text-2 block mb-1.5">Description (short — shown on the product card)</label>
                 <textarea value={editForm.description} onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))} rows={3} className="w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 resize-y" />
+              </div>
+              <div className="mt-3.5">
+                <label className="text-sm font-semibold text-text-2 block mb-1.5">Usage Instructions (one step per line)</label>
+                <textarea value={editForm.usage_instructions} onChange={(e) => setEditForm((f) => ({ ...f, usage_instructions: e.target.value }))} rows={3} className="w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 resize-y" />
               </div>
               <div className="grid sm:grid-cols-2 gap-3.5 mt-3.5">
                 <div>
@@ -201,6 +217,10 @@ export default function AdminProductsPage() {
                 </div>
                 <Field label="Or New Image URL" value={editForm.image_url} onChange={(v) => setEditForm((f) => ({ ...f, image_url: v }))} placeholder="Leave blank to keep current" />
               </div>
+              <label className="mt-3.5 flex items-center gap-2.5 text-sm font-semibold text-text-2 cursor-pointer">
+                <input type="checkbox" checked={editForm.is_featured} onChange={(e) => setEditForm((f) => ({ ...f, is_featured: e.target.checked }))} className="w-4 h-4" />
+                Featured — not yet in stock (shows a "Coming Soon" preview instead of stock status)
+              </label>
               <div className="flex gap-2.5 mt-5">
                 <button disabled={saving} className="px-5 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm flex items-center gap-2 disabled:opacity-60"><Icon name="save" />Save Changes</button>
                 <button type="button" onClick={() => setEditing(null)} className="px-5 py-2.5 rounded-btn bg-bg-alt text-text-2 font-bold text-sm flex items-center gap-2"><Icon name="times" />Cancel</button>

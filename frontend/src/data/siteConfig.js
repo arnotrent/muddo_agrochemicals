@@ -12,7 +12,7 @@ const siteConfig = {
   company_phone_secondary: '0772 971620 / 0701-971620',
   company_email: 'muddoagro811@gmail.com',
   company_address: 'Container Village Nakivubo, Equity Bank Basement V013, P.O Box 25240',
-  business_hours: 'Monday to Saturday, 8am until 6pm',
+  business_hours: 'Monday to Friday, 9:00 AM until 5:00 PM (closed Sundays)',
   whatsapp_number: '256772507582',
   facebook_url: 'https://facebook.com/p/MUDDO-AGRO-Chemicals-LTD-100063836929481/',
 }

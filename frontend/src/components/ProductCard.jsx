@@ -4,15 +4,17 @@ import Icon from './Icon'
 const CATEGORY_ICON = { pesticide: 'bug', herbicide: 'seedling', fungicide: 'microscope', other: 'boxes' }
 
 export default function ProductCard({ product }) {
-  const stockBadge =
-    product.stock_status === 'out'
-      ? { text: 'Out of Stock', icon: 'times-circle', cls: 'bg-accent-red/90' }
-      : product.stock_status === 'low'
-      ? { text: 'Low Stock', icon: 'exclamation-circle', cls: 'bg-accent-blue/90' }
-      : { text: 'In Stock', icon: 'check-circle', cls: 'bg-accent-green/90' }
+  const isFeatured = product.is_featured
+  const stockBadge = isFeatured
+    ? { text: 'Featured — Coming Soon', icon: 'star', cls: 'bg-accent-green/90' }
+    : product.stock_status === 'out'
+    ? { text: 'Out of Stock', icon: 'times-circle', cls: 'bg-accent-red/90' }
+    : product.stock_status === 'low'
+    ? { text: 'Low Stock', icon: 'exclamation-circle', cls: 'bg-accent-blue/90' }
+    : { text: 'In Stock', icon: 'check-circle', cls: 'bg-accent-green/90' }
 
   return (
-    <div className="bg-bg-card border border-border rounded-card overflow-hidden flex flex-col transition-all hover:-translate-y-1.5 hover:border-accent-blue hover:shadow-lg group">
+    <div className={`bg-bg-card border rounded-card overflow-hidden flex flex-col transition-all hover:-translate-y-1.5 hover:shadow-lg group ${isFeatured ? 'border-accent-green/50' : 'border-border hover:border-accent-blue'}`}>
       <div className="relative h-[210px] bg-bg-alt overflow-hidden">
         <img
           src={product.display_image}
@@ -36,9 +38,15 @@ export default function ProductCard({ product }) {
           <Link to={`/product/${product.id}`} className="flex-1 text-center py-2 rounded-btn bg-bg-alt text-text-2 text-sm font-bold hover:bg-bg-card hover:border hover:border-accent-blue">
             Details
           </Link>
-          <Link to={`/contact?subject=Product+Enquiry`} className="flex-1 text-center py-2 rounded-btn bg-accent-blue text-white text-sm font-bold shadow-glow-blue hover:bg-accent-blue-hover">
-            Enquire
-          </Link>
+          {isFeatured ? (
+            <Link to={`/contact?subject=Product+Enquiry`} className="flex-1 text-center py-2 rounded-btn bg-accent-green text-bg-deep text-sm font-bold hover:bg-accent-green-hover">
+              Notify Me
+            </Link>
+          ) : (
+            <Link to={`/contact?subject=Product+Enquiry`} className="flex-1 text-center py-2 rounded-btn bg-accent-blue text-white text-sm font-bold shadow-glow-blue hover:bg-accent-blue-hover">
+              Enquire
+            </Link>
+          )}
         </div>
       </div>
     </div>

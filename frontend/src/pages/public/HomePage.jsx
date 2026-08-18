@@ -11,7 +11,7 @@ const CATEGORIES = [
   ['bug', 'Pesticides', 'pesticides', '/images/hero_pesticides.jpg'],
   ['seedling', 'Herbicides', 'herbicides', '/images/hero_herbicides.jpg'],
   ['microscope', 'Fungicides', 'fungicides', '/images/hero_fungicides.jpg'],
-  ['boxes', 'Fertilizers & Equipment', 'other', '/images/hero_fertilizers.jpg'],
+  ['boxes', 'Others & Equipment', 'other', '/images/hero_fertilizers.jpg'],
 ]
 
 const WHY_CARDS = [
@@ -24,15 +24,17 @@ const WHY_CARDS = [
 ]
 
 export default function HomePage() {
-  const [featured, setFeatured] = useState([])
+  const [popularProducts, setPopularProducts] = useState([])
+  const [comingSoon, setComingSoon] = useState([])
   const [distCount, setDistCount] = useState(0)
   const [totalProducts, setTotalProducts] = useState(0)
 
   useEffect(() => {
-    productsApi.list({ page_size: 6, ordering: '?' }).then(({ data }) => {
+    productsApi.list({ page_size: 6, ordering: '?', is_featured: false }).then(({ data }) => {
       const results = data.results || data
-      setFeatured(results.slice(0, 6))
+      setPopularProducts(results.slice(0, 6))
     })
+    productsApi.list({ is_featured: true, page_size: 12 }).then(({ data }) => setComingSoon(data.results || data))
     productsApi.list({ page_size: 1 }).then(({ data }) => setTotalProducts(data.count ?? (data.results || data).length))
     distributorsApi.list({ page_size: 1 }).then(({ data }) => setDistCount(data.count ?? (data.results || data).length))
   }, [])
@@ -80,14 +82,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="py-12">
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <Reveal className="bg-white rounded-card border border-border shadow-lg overflow-hidden flex items-center justify-center p-6 sm:p-10 max-w-[720px] mx-auto">
-            <img src="/logo_full.png" alt="Muddo Agro Chemicals LTD — official business card" className="w-full h-auto object-contain" />
-          </Reveal>
-        </div>
-      </section>
-
       <section className="py-16">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="text-center mb-11">
@@ -117,17 +111,34 @@ export default function HomePage() {
         </div>
       </section>
 
-      {featured.length > 0 && (
+      {popularProducts.length > 0 && (
         <section className="py-16 bg-bg-alt">
           <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
             <div className="text-center mb-11">
               <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3">
                 <Icon name="star" />Popular
               </div>
-              <h2 className="text-3xl font-bold text-text-1">Featured Products</h2>
+              <h2 className="text-3xl font-bold text-text-1">Popular Products</h2>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featured.map((p, i) => <Reveal key={p.id} delay={i * 60}><ProductCard product={p} /></Reveal>)}
+              {popularProducts.map((p, i) => <Reveal key={p.id} delay={i * 60}><ProductCard product={p} /></Reveal>)}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {comingSoon.length > 0 && (
+        <section className="py-16">
+          <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+            <div className="text-center mb-11">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-green/10 text-accent-green text-xs font-bold uppercase tracking-wide mb-3">
+                <Icon name="star" />Coming Soon
+              </div>
+              <h2 className="text-3xl font-bold text-text-1">New Products On The Way</h2>
+              <p className="text-text-3 max-w-[56ch] mx-auto mt-2.5">Currently being finalised for stock — get in touch to be notified the moment they land.</p>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {comingSoon.map((p, i) => <Reveal key={p.id} delay={i * 60}><ProductCard product={p} /></Reveal>)}
             </div>
           </div>
         </section>
@@ -185,6 +196,37 @@ export default function HomePage() {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="py-16 bg-bg-alt">
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+          <Reveal className="grid lg:grid-cols-[1fr_1.1fr] gap-10 items-center bg-bg-card border border-border rounded-card overflow-hidden shadow-lg">
+            <div className="bg-white p-6 sm:p-9 flex items-center justify-start h-full">
+              <img src="/logo_full.png" alt="Muddo Agro Chemicals LTD — official business card" className="w-full h-auto object-contain" />
+            </div>
+            <div className="p-6 sm:p-9 text-left">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-accent-blue/10 text-accent-blue text-xs font-bold uppercase tracking-wide mb-3.5">
+                <Icon name="headset" />Expert Agronomy Advice — Free
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold text-text-1 mb-3 text-left">Not Sure Which Product to Use?</h2>
+              <p className="text-text-2 leading-relaxed mb-6 text-left max-w-[52ch]">
+                Tell us your crop, pest or weed problem — our trained team will recommend the right product, dosage
+                and timing for Ugandan conditions.
+              </p>
+              <div className="flex gap-3 flex-wrap">
+                <a href={`https://wa.me/${site.whatsapp_number || ''}?text=Hello%20MACL%2C%20I%20need%20advice`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-5 py-3 rounded-btn bg-accent-green text-bg-deep font-bold text-sm shadow-glow-green hover:-translate-y-0.5 transition-all">
+                  <Icon name="whatsapp" />WhatsApp Us
+                </a>
+                <a href={`tel:${site.company_phone?.split('/')[0].trim()}`} className="inline-flex items-center gap-2 px-5 py-3 rounded-btn bg-accent-blue text-white font-bold text-sm shadow-glow-blue hover:-translate-y-0.5 transition-all">
+                  <Icon name="phone" />{site.company_phone}
+                </a>
+                <Link to="/contact" className="inline-flex items-center gap-2 px-5 py-3 rounded-btn border border-border text-text-2 font-bold text-sm hover:-translate-y-0.5 transition-all">
+                  <Icon name="envelope" />Send a Message
+                </Link>
+              </div>
+            </div>
+          </Reveal>
         </div>
       </section>
     </>

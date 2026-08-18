@@ -65,17 +65,44 @@ export default function ProductDetailPage() {
 
           <div>
             <div className="flex items-center gap-2.5 mb-3.5 flex-wrap">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white ${
-                product.stock_status === 'out' ? 'bg-accent-red' : product.stock_status === 'low' ? 'bg-accent-blue' : 'bg-accent-green'
-              }`}>
-                <Icon name={product.stock_status === 'out' ? 'times-circle' : product.stock_status === 'low' ? 'exclamation-circle' : 'check-circle'} />
-                {product.stock_status === 'out' ? 'Out of Stock' : product.stock_status === 'low' ? 'Low Stock' : 'In Stock'}
-              </span>
+              {product.is_featured ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-bg-deep bg-accent-green">
+                  <Icon name="star" />Featured — Coming Soon
+                </span>
+              ) : (
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold text-white ${
+                  product.stock_status === 'out' ? 'bg-accent-red' : product.stock_status === 'low' ? 'bg-accent-blue' : 'bg-accent-green'
+                }`}>
+                  <Icon name={product.stock_status === 'out' ? 'times-circle' : product.stock_status === 'low' ? 'exclamation-circle' : 'check-circle'} />
+                  {product.stock_status === 'out' ? 'Out of Stock' : product.stock_status === 'low' ? 'Low Stock' : 'In Stock'}
+                </span>
+              )}
               <span className="text-xs text-text-3 bg-bg-alt px-3 py-1 rounded-full border border-border">MAAIF Registered</span>
             </div>
+            {product.is_featured && (
+              <div className="mb-4 p-3.5 rounded-lg bg-accent-green/10 border border-accent-green/30 text-sm text-text-2 flex items-start gap-2">
+                <Icon name="info-circle" className="text-accent-green mt-0.5" />
+                This product is currently being finalised for stock. Reach out and we'll notify you the moment it's available.
+              </div>
+            )}
             <h1 className="text-3xl sm:text-4xl font-bold text-text-1 mb-3.5 leading-tight">{product.name}</h1>
             {product.description && (
               <p className="text-text-2 leading-relaxed mb-6 border-l-[3px] border-accent-blue pl-4">{product.description}</p>
+            )}
+            {product.usage_instructions && (
+              <div className="mb-6">
+                <h3 className="text-xs font-bold uppercase tracking-wide text-text-3 mb-3 flex items-center gap-2">
+                  <Icon name="check-circle" className="text-accent-blue" />How To Use
+                </h3>
+                <ul className="flex flex-col gap-2.5">
+                  {product.usage_instructions.split('\n').filter(Boolean).map((step, i) => (
+                    <li key={i} className="flex items-start gap-2.5 text-sm text-text-2 leading-relaxed">
+                      <span className="w-5 h-5 rounded-full bg-bg-alt text-accent-blue text-xs font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                      {step}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             <h3 className="text-xs font-bold uppercase tracking-wide text-text-3 mb-3 flex items-center gap-2">
               <Icon name="flask" className="text-accent-blue" />Technical Specifications

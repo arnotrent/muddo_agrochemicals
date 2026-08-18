@@ -70,7 +70,7 @@ export default function PublicLayout() {
                 <li><Link to="/products/pesticides" className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-bg-alt hover:text-accent-blue"><Icon name="bug" className="text-accent-blue" />Pesticides</Link></li>
                 <li><Link to="/products/herbicides" className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-bg-alt hover:text-accent-blue"><Icon name="seedling" className="text-accent-blue" />Herbicides</Link></li>
                 <li><Link to="/products/fungicides" className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-bg-alt hover:text-accent-blue"><Icon name="microscope" className="text-accent-blue" />Fungicides</Link></li>
-                <li><Link to="/products/other" className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-bg-alt hover:text-accent-blue"><Icon name="boxes" className="text-accent-blue" />Fertilizers & Equipment</Link></li>
+                <li><Link to="/products/other" className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-bg-alt hover:text-accent-blue"><Icon name="boxes" className="text-accent-blue" />Others & Equipment</Link></li>
                 <li className="border-t border-border mt-1.5 pt-1.5"><Link to="/compare" className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm hover:bg-bg-alt hover:text-accent-blue"><Icon name="balance-scale" className="text-accent-blue" />Compare Products</Link></li>
               </ul>
             </li>
@@ -125,7 +125,7 @@ export default function PublicLayout() {
               ['/products/pesticides', 'Pesticides', 'bug'],
               ['/products/herbicides', 'Herbicides', 'seedling'],
               ['/products/fungicides', 'Fungicides', 'microscope'],
-              ['/products/other', 'Fertilizers & Equipment', 'boxes'],
+              ['/products/other', 'Others & Equipment', 'boxes'],
               ['/compare', 'Compare Products', 'balance-scale'],
               ['/distributors', 'Find a Store', 'store'],
               ['/about', 'About Us & FAQ', 'info-circle'],
@@ -200,7 +200,7 @@ export default function PublicLayout() {
                 <li><Link to="/products/pesticides" className="hover:text-accent-blue">Pesticides</Link></li>
                 <li><Link to="/products/herbicides" className="hover:text-accent-blue">Herbicides</Link></li>
                 <li><Link to="/products/fungicides" className="hover:text-accent-blue">Fungicides</Link></li>
-                <li><Link to="/products/other" className="hover:text-accent-blue">Fertilizers & Equipment</Link></li>
+                <li><Link to="/products/other" className="hover:text-accent-blue">Others & Equipment</Link></li>
                 <li><Link to="/compare" className="hover:text-accent-blue">Compare</Link></li>
               </ul>
             </div>

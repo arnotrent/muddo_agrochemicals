@@ -2,20 +2,19 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { productsApi } from '../../api/services'
 import site from '../../data/siteConfig'
-import staticFaqs from '../../data/faqs'
+import faqGroups from '../../data/faqs'
 import Icon from '../../components/Icon'
 
 const CATEGORY_META = [
   ['pesticide', 'bug', 'Pesticides'],
   ['herbicide', 'seedling', 'Herbicides'],
   ['fungicide', 'microscope', 'Fungicides'],
-  ['other', 'boxes', 'Fertilizers & Equipment'],
+  ['other', 'boxes', 'Others & Equipment'],
 ]
 
 export default function AboutPage() {
   const [openFaq, setOpenFaq] = useState(null)
   const [groups, setGroups] = useState([])
-  const faqs = staticFaqs
 
   useEffect(() => {
     Promise.all(CATEGORY_META.map(([cat]) => productsApi.list({ category: cat, page_size: 8 }))).then((responses) => {
@@ -108,24 +107,44 @@ export default function AboutPage() {
       </section>
 
       <section className="py-14">
-        <div className="max-w-[820px] mx-auto px-4 sm:px-6">
-          <div className="text-center mb-8">
+        <div className="max-w-[860px] mx-auto px-4 sm:px-6">
+          <div className="text-center mb-9">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3">
               <Icon name="question-circle" />FAQ
             </div>
             <h2 className="text-3xl font-bold text-text-1">Frequently Asked Questions</h2>
+            <p className="text-text-3 max-w-[56ch] mx-auto mt-2.5">Answers to what farmers and distributors ask us most.</p>
           </div>
-          <div className="flex flex-col gap-2">
-            {faqs.map((f) => (
-              <div key={f.id} className="bg-bg-card border border-border rounded-card overflow-hidden">
-                <button onClick={() => setOpenFaq(openFaq === f.id ? null : f.id)} className="w-full p-4.5 text-left flex justify-between items-center gap-3.5 font-bold text-text-1">
-                  <span>{f.question}</span>
-                  <Icon name="chevron-down" className={`text-accent-blue transition-transform ${openFaq === f.id ? 'rotate-180' : ''}`} />
-                </button>
-                {openFaq === f.id && <div className="px-4.5 pb-4.5 text-sm text-text-2 leading-relaxed border-t border-border pt-3.5">{f.answer}</div>}
-              </div>
+
+          <div className="flex gap-2 flex-wrap justify-center mb-8">
+            {faqGroups.map((g) => (
+              <a key={g.id} href={`#faq-${g.id}`} className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-bg-alt text-text-2 text-xs font-bold hover:text-accent-blue hover:bg-accent-blue/10 transition-colors">
+                <Icon name={g.icon} className="text-accent-blue" />{g.title}
+              </a>
             ))}
           </div>
+
+          {faqGroups.map((group) => (
+            <div key={group.id} id={`faq-${group.id}`} className="mb-9 scroll-mt-24">
+              <div className="flex items-center gap-2.5 mb-3.5">
+                <div className="w-9 h-9 rounded-lg bg-bg-alt text-accent-blue flex items-center justify-center flex-shrink-0">
+                  <Icon name={group.icon} />
+                </div>
+                <h3 className="text-lg font-bold text-text-1">{group.title}</h3>
+              </div>
+              <div className="flex flex-col gap-2">
+                {group.items.map((f) => (
+                  <div key={f.id} className="bg-bg-card border border-border rounded-card overflow-hidden">
+                    <button onClick={() => setOpenFaq(openFaq === f.id ? null : f.id)} className="w-full p-4.5 text-left flex justify-between items-center gap-3.5 font-bold text-text-1">
+                      <span>{f.question}</span>
+                      <Icon name="chevron-down" className={`text-accent-blue transition-transform flex-shrink-0 ${openFaq === f.id ? 'rotate-180' : ''}`} />
+                    </button>
+                    {openFaq === f.id && <div className="px-4.5 pb-4.5 text-sm text-text-2 leading-relaxed border-t border-border pt-3.5">{f.answer}</div>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </>

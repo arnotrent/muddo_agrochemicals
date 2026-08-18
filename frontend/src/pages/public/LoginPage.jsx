@@ -7,7 +7,7 @@ const SLIDES = [
   { icon: 'bug', tag: 'Pesticides', img: '/images/hero_pesticides.jpg', title: 'Protection that actually holds up in the field.', desc: 'Broad-spectrum insecticides trusted by farmers across all four regions of Uganda.' },
   { icon: 'seedling', tag: 'Herbicides', img: '/images/hero_herbicides.jpg', title: 'Clear the weeds, keep the crop.', desc: 'Selective and non-selective control for even the most stubborn Couch and Kikuyu grass.' },
   { icon: 'microscope', tag: 'Fungicides', img: '/images/hero_fungicides.jpg', title: "Built for Uganda's humidity.", desc: 'Protective and curative fungicides that hold up against blight and mildew season after season.' },
-  { icon: 'boxes', tag: 'Fertilizers & Equipment', img: '/images/hero_fertilizers.jpg', title: 'Everything else the farm needs.', desc: 'From basal fertilizer to a dependable knapsack sprayer — genuine, in stock, MAAIF-registered.' },
+  { icon: 'boxes', tag: 'Others & Equipment', img: '/images/hero_fertilizers.jpg', title: 'Everything else the farm needs.', desc: 'From basal fertilizer to a dependable knapsack sprayer — genuine, in stock, MAAIF-registered.' },
 ]
 
 export default function LoginPage() {

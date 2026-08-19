@@ -12,10 +12,16 @@ def root_health_check(request):
     })
 
 urlpatterns = [
-    path('', root_health_check),            # Fixes 404 on GET /
-    path('health/', root_health_check),      # Dedicated Render health check route
-    path('django-admin/', admin.site.urls), # Django break-glass admin
+    # Health checks & Root aliases
+    path('', root_health_check),
+    path('health/', root_health_check),
+    path('api/health/', root_health_check),     # Fixes /api/health 404
+    path('api/v1/', root_health_check),         # Fixes /api/v1 404
+    
+    # Django Admin
+    path('django-admin/', admin.site.urls),
 
+    # App API Endpoints
     path('api/v1/auth/', include('apps.core.urls_auth')),
     path('api/v1/', include('apps.core.urls_api')),
     path('api/v1/', include('apps.products.urls_api')),

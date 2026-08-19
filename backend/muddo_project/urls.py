@@ -2,9 +2,19 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse
+
+def root_health_check(request):
+    return JsonResponse({
+        "status": "healthy",
+        "service": "Muddo Agrochemicals API",
+        "version": "v1"
+    })
 
 urlpatterns = [
-    path('django-admin/', admin.site.urls),  # Django's own built-in admin — kept as a break-glass tool
+    path('', root_health_check),            # Fixes 404 on GET /
+    path('health/', root_health_check),      # Dedicated Render health check route
+    path('django-admin/', admin.site.urls), # Django break-glass admin
 
     path('api/v1/auth/', include('apps.core.urls_auth')),
     path('api/v1/', include('apps.core.urls_api')),

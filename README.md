@@ -180,6 +180,7 @@ Real photography is already wired in under `frontend/public/` and
 - `public/images/banner_admin.png` / `banner_agent.png` — the branded banners at the top of the admin and agent dashboards.
 - `public/images/why_quality.jpg` / `why_equipment.jpg` — the homepage "Field-Tested" photo pair.
 - `public/images/about_side.jpg`, `handshake.jpg`, `hero_about_banner.png`, `hero_contact_banner.png` — About/Contact page imagery.
+- `public/images/store_locator_map.png` — a real map screenshot of the HQ location, used as the Find a Store page's hero background (that page previously had a text-only hero).
 
 **One known gap:** there's no dedicated "Others & Equipment" category
 hero photo — `sprayer_field_application.png` stands in for it
@@ -249,9 +250,43 @@ database-backed, and admin-editable through the panel as normal.
 
 ## 7. Troubleshooting
 
-**"Can't open file '.../backend/manage.py'" on Render** — fixed. If you
-see this again, it means Root Directory in the Render dashboard doesn't
-point at the folder containing `manage.py`; it should be exactly `backend`.
+**Root domain / health checks return "Not Found"** — fixed. The API
+previously only defined `/api/v1/...` routes, so hitting the bare domain
+(`/`) or a health-check path correctly 404'd — but that's easy to mistake
+for "the whole service is down." There are now three diagnostic
+endpoints that always return `200` if the backend is actually running:
+- `GET /` — a small JSON status page with links to the API root and health check
+- `GET /health/` — plain `{"status": "ok"}`, used by Render's health check (`backend/render.yaml` → `healthCheckPath: /health/`)
+- `GET /api/v1/health/` — same, under the API prefix
+
+Hit these directly (`curl https://your-backend.onrender.com/health/`) as
+the first troubleshooting step whenever something seems broken — it
+immediately tells you whether the backend process is up at all, separate
+from any frontend or CORS issue.
+
+**"The frontend isn't getting anything" / looks broken with no visible
+error** — the single most common cause: **`VITE_API_BASE_URL` was not
+set at *build time*.** Vite bakes environment variables into the bundle
+when `npm run build` runs — setting the variable on your hosting
+platform *after* a build already happened does nothing until you
+rebuild. If this variable is missing at build time, the deployed site
+silently falls back to `http://127.0.0.1:8000`, which can never work
+from a real browser, and — because it's a same-origin-looking failure to
+axios — nothing visibly errors on screen.
+
+Two things now make this failure loud instead of silent:
+- `frontend/src/api/client.js` logs a clear `console.error` on load if
+  the deployed site is still pointing at `127.0.0.1`.
+- `frontend/src/components/ApiStatusBanner.jsx` pings the backend's
+  `/health/` endpoint once on load and shows a persistent red banner
+  across the top of the site — with the exact API URL it tried — if the
+  backend is unreachable for any reason (down, wrong URL, or CORS).
+
+**To fix "frontend isn't getting anything," in order:**
+1. Confirm the backend is actually up: `curl https://your-backend-url/health/` should return `{"status":"ok",...}`. If it doesn't, the problem is the backend, not the frontend — see the deploy steps in §3.1.
+2. Confirm `VITE_API_BASE_URL` is set in your **frontend host's build-time environment variables** (not just saved in a dashboard field that only applies at runtime — check your host's docs for the distinction) and includes the `/api/v1` suffix, e.g. `https://your-backend-url/api/v1`.
+3. **Rebuild and redeploy the frontend** after setting/changing that variable — it will not take effect on an already-built site.
+4. Confirm `CORS_ALLOWED_ORIGINS` on the backend includes the frontend's exact deployed URL (scheme + host, no trailing slash). Open the browser console — a CORS block shows a distinct "blocked by CORS policy" message there, different from a plain network failure.
 
 **Frontend shows a broken/collapsed layout (odd spacing, missing card
 borders)** — this was a real bug in an earlier round: several Tailwind
@@ -265,6 +300,13 @@ wrong — it's often just an unsupported class name.
 **CORS errors in the browser console** — `CORS_ALLOWED_ORIGINS` on the
 backend must exactly match the frontend's deployed origin, including the
 scheme (`https://`) and no trailing slash.
+
+**`DisallowedHost` / 400 Bad Request instead of your page** —
+`ALLOWED_HOSTS` on the backend doesn't include the hostname you're
+actually visiting. `backend/render.yaml` sets this to `.onrender.com`
+(the leading dot matches any subdomain) precisely so this doesn't break
+if your service ends up with a different name than expected — if you're
+on a custom domain instead, add it explicitly.
 
 **Images 404 in production but work locally** — check whether the path
 is `/images/...` (frontend-served, seed data) or `/media/...`

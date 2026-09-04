@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { RequireRole } from './routes/guards'
+import ApiStatusBanner from './components/ApiStatusBanner'
 
 import PublicLayout from './layouts/PublicLayout'
 import AdminLayout from './layouts/AdminLayout'
@@ -54,6 +55,7 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <ApiStatusBanner />
           <Suspense fallback={<RouteLoader />}>
             <Routes>
               {/* Public site */}

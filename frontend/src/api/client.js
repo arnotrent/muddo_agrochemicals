@@ -1,7 +1,25 @@
 import axios from 'axios'
 
-// Use a single declaration fallback pointing to your production backend
-export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://muddo-agrochemicals.onrender.com/api/v1'
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
+
+// Loud, not silent: if this build is running anywhere other than a local
+// dev machine but is still pointing at localhost, VITE_API_BASE_URL was
+// not set at BUILD TIME on the hosting platform (Vite bakes this value
+// into the bundle when `npm run build` runs — setting it afterward, or
+// only as a "runtime" env var, does nothing). This is the single most
+// common cause of "the deployed frontend does nothing" — every request
+// silently tries to reach a browser's own localhost and fails.
+const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+if (!isLocalHost && API_BASE.includes('127.0.0.1')) {
+  // eslint-disable-next-line no-console
+  console.error(
+    '[Muddo Agro] VITE_API_BASE_URL was not set at build time — this deployed ' +
+    'site is still pointing at http://127.0.0.1:8000, which cannot work from ' +
+    'a browser. Set VITE_API_BASE_URL in your hosting platform\'s build-time ' +
+    'environment variables (not a runtime-only setting) and REBUILD — changing ' +
+    'the variable alone does not update an already-built site.'
+  )
+}
 
 const ACCESS_KEY = 'muddo_access'
 const REFRESH_KEY = 'muddo_refresh'

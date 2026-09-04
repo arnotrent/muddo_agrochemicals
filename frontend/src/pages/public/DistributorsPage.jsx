@@ -43,8 +43,11 @@ export default function DistributorsPage() {
 
   return (
     <>
-      <section className="py-10" style={{ backgroundColor: '#0F172A' }}>
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+      <section
+        className="relative py-14 bg-cover bg-center"
+        style={{ backgroundImage: "linear-gradient(180deg, rgba(15,23,42,.65) 0%, rgba(15,23,42,.88) 100%), url('/images/store_locator_map.png')" }}
+      >
+        <div className="max-w-[1240px] mx-auto px-4 sm:px-6 relative z-10">
           <div className="text-xs text-white/65 mb-2.5">Home / <span className="text-accent-blue font-bold">Find a Store</span></div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white my-3">Find a Store Near You</h1>
           <p className="text-white/85 max-w-[55ch]">{distributors.length} authorised MACL outlets across all four regions of Uganda.</p>

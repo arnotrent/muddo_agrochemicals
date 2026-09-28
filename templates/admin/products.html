@@ -1,0 +1,179 @@
+{% extends "admin/base_admin.html" %}{% load icons %}
+{% block title %}Products{% endblock %}{% block page_icon %}{% icon "flask" %}{% endblock %}{% block page_heading %}Manage Products{% endblock %}
+{% block content %}
+<div class="admin-card">
+  <div class="admin-card-header"><div class="admin-card-title">{% icon "plus-circle" %}Add New Product</div></div>
+  <div class="admin-card-body">
+    <form method="POST" action="{% url 'admin_add_product' %}" enctype="multipart/form-data">{% csrf_token %}
+      <div class="rgrid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+        <div class="admin-form-group"><label>Product Name <span>*</span></label><input name="name" class="admin-input" required></div>
+        <div class="admin-form-group"><label>Category <span>*</span></label><select name="category" class="admin-input" required><option value="pesticide">Pesticide</option><option value="herbicide">Herbicide</option><option value="fungicide">Fungicide</option><option value="other">Other / Agri Input</option></select></div>
+        <div class="admin-form-group"><label>Active Ingredient</label><input name="active_ingredient" class="admin-input" placeholder="e.g. Glyphosate 480 g/l"></div>
+        <div class="admin-form-group"><label>Formulation</label><input name="formulation" class="admin-input" placeholder="e.g. Soluble Liquid (SL)"></div>
+        <div class="admin-form-group"><label>Target Crops</label><input name="crops" class="admin-input"></div>
+        <div class="admin-form-group"><label>Dosage / Rate</label><input name="dosage" class="admin-input"></div>
+        <div class="admin-form-group"><label>Pack Sizes</label><input name="packing" class="admin-input"></div>
+        <div class="admin-form-group"><label>Initial Stock Qty</label><input name="stock_qty" type="number" min="0" value="0" class="admin-input"></div>
+        <div class="admin-form-group"><label>Reorder Level</label><input name="reorder_level" type="number" min="0" value="10" class="admin-input"></div>
+      </div>
+      <div class="rgrid-3" style="display:grid;grid-template-columns:88px 1fr 1fr;gap:14px;align-items:end">
+        <div class="admin-form-group" style="margin-bottom:0">
+          <label>Preview</label>
+          <div id="add_imgPreviewWrap" style="width:72px;height:72px;border-radius:10px;background:var(--bg-alt);border:1.5px dashed var(--border-color,var(--border));display:flex;align-items:center;justify-content:center;overflow:hidden">
+            <img id="add_imgPreview" style="display:none;width:100%;height:100%;object-fit:contain;padding:4px">
+            <span id="add_imgPreviewIcon" style="color:var(--text-muted);font-size:.7rem;text-align:center;padding:4px">No image</span>
+          </div>
+        </div>
+        <div class="admin-form-group"><label>Product Image (upload)</label><input name="product_image" id="add_imgInput" type="file" accept="image/*" class="admin-input" onchange="previewImage('add_imgInput','add_imgPreview','add_imgPreviewIcon')"></div>
+        <div class="admin-form-group"><label>Or Image URL</label><input name="image_url" id="add_imgUrl" class="admin-input" placeholder="https://…" oninput="previewImageUrl(this.value,'add_imgPreview','add_imgPreviewIcon')"></div>
+      </div>
+      <div class="admin-form-group"><label>Description</label><textarea name="description" class="admin-input" rows="3"></textarea></div>
+      <button type="submit" class="btn-admin btn-primary-admin">{% icon "plus" %}Add Product</button>
+    </form>
+  </div>
+</div>
+<div class="admin-card">
+  <div class="admin-card-header"><div class="admin-card-title">{% icon "list" %}All Products</div>
+    <input type="text" id="ps" placeholder="Search…" oninput="document.querySelectorAll('#pt tbody tr[data-search]').forEach(r=>r.style.display=r.dataset.search.includes(this.value.toLowerCase())?'':'')" style="padding:7px 12px;border:1.5px solid var(--border-color);border-radius:9px;font-family:var(--font-body,'DM Sans',sans-serif);font-size:.84rem;background:var(--bg-input);color:var(--text-primary);width:200px;outline:none">
+  </div>
+  <div class="tbl-wrap">
+    <table class="data-table" id="pt"><thead><tr><th style="width:56px"></th><th>Product</th><th>Category</th><th>Active Ingredient</th><th>Pack Sizes</th><th>Stock</th><th>Actions</th></tr></thead>
+    <tbody>{% for p in products %}<tr data-search="{{ p.name|lower }} {{ p.active_ingredient|lower }} {{ p.category }}">
+      <td><a href="{{ p.display_image }}" target="_blank" title="View full image"><img src="{{ p.display_image }}" style="width:48px;height:48px;object-fit:contain;background:var(--bg-alt);border:1px solid var(--border-color,var(--border));border-radius:8px;padding:3px" onerror="this.style.display='none'"></a></td>
+      <td><strong>{{ p.name }}</strong>{% if p.description %}<br><small style="color:var(--text-muted);font-size:.76rem">{{ p.description|truncatechars:55 }}</small>{% endif %}
+        {% if p.gallery.count %}<br><small style="color:var(--accent-blue);font-size:.72rem">{% icon "th-large" %}{{ p.gallery.count }} gallery photo{{ p.gallery.count|pluralize }}</small>{% endif %}
+      </td>
+      <td><span class="badge {% if p.category == 'pesticide' %}badge-denied{% elif p.category == 'herbicide' %}badge-approved{% elif p.category == 'fungicide' %}badge-new{% else %}badge-pending{% endif %}">{{ p.get_category_display }}</span></td>
+      <td style="font-size:.82rem;color:var(--text-muted)">{{ p.active_ingredient|default:"—"|truncatechars:40 }}</td>
+      <td style="font-size:.82rem">{{ p.packing|default:"—" }}</td>
+      <td>{% if p.stock_qty == 0 %}<span class="badge badge-out">Out</span>{% elif p.stock_qty <= 10 %}<span class="badge badge-low">{{ p.stock_qty }}</span>{% else %}<span class="badge badge-in">{{ p.stock_qty }}</span>{% endif %}</td>
+      <td><div style="display:flex;gap:5px">
+        <a href="{{ p.get_absolute_url }}" target="_blank" class="btn-admin btn-secondary-admin" style="padding:5px 9px;font-size:.76rem">{% icon "eye" %}</a>
+        <a href="{% url 'product_spec_sheet' p.id %}" target="_blank" class="btn-admin btn-secondary-admin" style="padding:5px 9px;font-size:.76rem">{% icon "file-pdf" %}</a>
+        <button type="button" class="btn-admin btn-secondary-admin" style="padding:5px 9px;font-size:.76rem" onclick="openGalleryModal({{ p.id }},'{{ p.name|escapejs }}')">{% icon "th-large" %}</button>
+        <button type="button" class="btn-admin btn-secondary-admin" style="padding:5px 9px;font-size:.76rem" onclick="openEditModal({{ p.id }},'{{ p.name|escapejs }}','{{ p.category }}','{{ p.active_ingredient|escapejs }}','{{ p.formulation|escapejs }}','{{ p.crops|escapejs }}','{{ p.dosage|escapejs }}','{{ p.packing|escapejs }}','{{ p.description|escapejs }}',{{ p.stock_qty }},'{{ p.display_image|escapejs }}')">{% icon "edit" %}</button>
+        <form method="POST" action="{% url 'admin_delete_product' p.id %}" style="display:inline" class="js-confirm-submit" data-confirm-title="Delete this product?" data-confirm-body="&quot;{{ p.name }}&quot; will be permanently removed from the catalogue. This can't be undone.">{% csrf_token %}<button type="submit" class="btn-admin btn-danger-admin" style="padding:5px 9px;font-size:.76rem">{% icon "trash" %}</button></form>
+      </div></td>
+    </tr>{% empty %}<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px">No products yet. Run <code>python manage.py seed_data</code></td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+</div>
+
+<!-- EDIT PRODUCT MODAL -->
+<div id="editProductModal" style="display:none;position:fixed;inset:0;background:rgba(8,10,9,.55);z-index:4000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg-card);border-radius:18px;padding:28px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.3);border:1.5px solid var(--border-color)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 style="font-family:var(--font-heading,'DM Sans',sans-serif);font-size:1.1rem;font-weight:800;color:var(--text-primary);margin:0">{% icon "edit" style="color:var(--accent-blue);margin-right:8px" %}Edit Product</h3>
+      <button type="button" onclick="closeEditModal()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.1rem">{% icon "times" %}</button>
+    </div>
+    <form method="POST" id="editProductForm" enctype="multipart/form-data">{% csrf_token %}
+      <div class="rgrid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="admin-form-group"><label>Product Name <span>*</span></label><input name="name" id="ep_name" class="admin-input" required></div>
+        <div class="admin-form-group"><label>Category <span>*</span></label><select name="category" id="ep_category" class="admin-input" required><option value="pesticide">Pesticide</option><option value="herbicide">Herbicide</option><option value="fungicide">Fungicide</option><option value="other">Other / Agri Input</option></select></div>
+        <div class="admin-form-group"><label>Active Ingredient</label><input name="active_ingredient" id="ep_ai" class="admin-input"></div>
+        <div class="admin-form-group"><label>Formulation</label><input name="formulation" id="ep_form" class="admin-input"></div>
+        <div class="admin-form-group"><label>Target Crops</label><input name="crops" id="ep_crops" class="admin-input"></div>
+        <div class="admin-form-group"><label>Dosage / Rate</label><input name="dosage" id="ep_dosage" class="admin-input"></div>
+        <div class="admin-form-group"><label>Pack Sizes</label><input name="packing" id="ep_packing" class="admin-input"></div>
+        <div class="admin-form-group"><label>Stock Qty</label><input name="stock_qty" id="ep_stock" type="number" min="0" class="admin-input"></div>
+      </div>
+      <div class="admin-form-group"><label>Description</label><textarea name="description" id="ep_desc" class="admin-input" rows="3"></textarea></div>
+      <div class="rgrid-3" style="display:grid;grid-template-columns:88px 1fr 1fr;gap:14px;align-items:end">
+        <div class="admin-form-group" style="margin-bottom:0">
+          <label>Current</label>
+          <div style="width:72px;height:72px;border-radius:10px;background:var(--bg-alt);border:1.5px dashed var(--border-color,var(--border));overflow:hidden">
+            <img id="ep_preview" style="width:100%;height:100%;object-fit:contain;padding:4px" onerror="this.style.display='none'">
+          </div>
+        </div>
+        <div class="admin-form-group"><label>Replace Image (upload)</label><input name="product_image" id="ep_imgInput" type="file" accept="image/*" class="admin-input" onchange="previewImage('ep_imgInput','ep_preview',null)"></div>
+        <div class="admin-form-group"><label>Or New Image URL</label><input name="image_url" id="ep_imgurl" class="admin-input" placeholder="Leave blank to keep current image" oninput="previewImageUrl(this.value,'ep_preview',null)"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button type="submit" class="btn-admin btn-primary-admin">{% icon "save" %}Save Changes</button>
+        <button type="button" onclick="closeEditModal()" class="btn-admin btn-secondary-admin">{% icon "times" %}Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- PHOTO GALLERY MODAL -->
+<div id="galleryModal" style="display:none;position:fixed;inset:0;background:rgba(8,10,9,.55);z-index:4000;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--bg-card);border-radius:18px;padding:28px;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 24px 70px rgba(0,0,0,.3);border:1.5px solid var(--border-color)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+      <h3 id="gal_title" style="font-size:1.1rem;font-weight:800;margin:0">{% icon "th-large" style="color:var(--accent-blue);margin-right:8px" %}Photo Gallery</h3>
+      <button type="button" onclick="document.getElementById('galleryModal').style.display='none'" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1.1rem">{% icon "times" %}</button>
+    </div>
+    <div id="gal_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:20px"></div>
+    <form id="gal_addForm" method="POST" enctype="multipart/form-data">{% csrf_token %}
+      <div class="rgrid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="admin-form-group"><label>Upload Photo</label><input name="image_file" type="file" accept="image/*" class="admin-input"></div>
+        <div class="admin-form-group"><label>Or Image URL</label><input name="image_url" class="admin-input" placeholder="https:// or /static/images/…"></div>
+      </div>
+      <div class="admin-form-group"><label>Caption (optional)</label><input name="caption" class="admin-input" maxlength="200"></div>
+      <button type="submit" class="btn-admin btn-primary-admin">{% icon "plus" %}Add Photo</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script>
+const GAL_DATA = {};
+{% for p in products %}GAL_DATA[{{ p.id }}] = [{% for g in p.gallery.all %}{id:{{ g.id }},url:"{{ g.display_url|escapejs }}",caption:"{{ g.caption|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}];{% endfor %}
+
+function previewImage(inputId, imgId, iconId){
+  const input = document.getElementById(inputId);
+  const img = document.getElementById(imgId);
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    img.src = e.target.result;
+    img.style.display = 'block';
+    if (iconId) { const icon = document.getElementById(iconId); if (icon) icon.style.display = 'none'; }
+  };
+  reader.readAsDataURL(file);
+}
+function previewImageUrl(url, imgId, iconId){
+  if (!url) return;
+  const img = document.getElementById(imgId);
+  img.src = url;
+  img.style.display = 'block';
+  if (iconId) { const icon = document.getElementById(iconId); if (icon) icon.style.display = 'none'; }
+}
+function openEditModal(id,name,cat,ai,form,crops,dosage,packing,desc,stock,image){
+  document.getElementById('editProductForm').action='/admin-panel/products/'+id+'/edit/';
+  document.getElementById('ep_name').value=name;
+  document.getElementById('ep_category').value=cat;
+  document.getElementById('ep_ai').value=ai;
+  document.getElementById('ep_form').value=form;
+  document.getElementById('ep_crops').value=crops;
+  document.getElementById('ep_dosage').value=dosage;
+  document.getElementById('ep_packing').value=packing;
+  document.getElementById('ep_desc').value=desc;
+  document.getElementById('ep_stock').value=stock;
+  document.getElementById('ep_imgurl').value='';
+  document.getElementById('ep_imgInput').value='';
+  const preview = document.getElementById('ep_preview');
+  if (image) { preview.src = image; preview.style.display = 'block'; } else { preview.style.display = 'none'; }
+  document.getElementById('editProductModal').style.display='flex';
+}
+function closeEditModal(){document.getElementById('editProductModal').style.display='none'}
+document.getElementById('editProductModal').addEventListener('click',function(e){if(e.target===this)closeEditModal()});
+
+function openGalleryModal(pid,name){
+  document.getElementById('gal_title').textContent = 'Photo Gallery — ' + name;
+  document.getElementById('gal_addForm').action = '/admin-panel/products/' + pid + '/photos/add/';
+  const grid = document.getElementById('gal_grid');
+  const items = GAL_DATA[pid] || [];
+  grid.innerHTML = items.length ? items.map(g => `
+    <div style="position:relative;border-radius:10px;overflow:hidden;border:1px solid var(--border);background:var(--bg-alt)">
+      <img src="${g.url}" style="width:100%;height:80px;object-fit:cover;display:block" onerror="this.style.opacity=0.3">
+      <form method="POST" action="/admin-panel/products/photos/${g.id}/delete/" style="position:absolute;top:4px;right:4px">
+        <input type="hidden" name="csrfmiddlewaretoken" value="${document.querySelector('[name=csrfmiddlewaretoken]').value}">
+        <button type="submit" style="width:22px;height:22px;border-radius:50%;background:rgba(15,23,42,.75);color:#fff;border:none;cursor:pointer;font-size:.7rem;line-height:1">✕</button>
+      </form>
+    </div>`).join('') : '<p style="grid-column:1/-1;color:var(--text-3);font-size:.85rem;text-align:center;padding:20px 0">No extra photos yet — add one below.</p>';
+  document.getElementById('galleryModal').style.display='flex';
+}
+document.getElementById('galleryModal').addEventListener('click',function(e){if(e.target===this)this.style.display='none'});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeEditModal();document.getElementById('galleryModal').style.display='none'}});
+</script>{% endblock %}

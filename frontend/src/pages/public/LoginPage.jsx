@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import Icon from '../../components/Icon'
 
@@ -129,12 +129,6 @@ export default function LoginPage() {
               <Icon name="sign-in-alt" />{loading ? 'Signing in…' : 'Sign In'}
             </button>
           </form>
-
-          <div className="text-center mt-5 pt-4 border-t border-border">
-            <Link to="/" className="text-sm text-text-3 flex items-center justify-center gap-1.5">
-              <Icon name="arrow-left" />Back to Website
-            </Link>
-          </div>
         </div>
       </div>
     </div>

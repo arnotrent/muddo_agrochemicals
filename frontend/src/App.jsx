@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { RequireRole } from './routes/guards'
-import ApiStatusBanner from './components/ApiStatusBanner'
 
 import PublicLayout from './layouts/PublicLayout'
 import AdminLayout from './layouts/AdminLayout'
@@ -41,6 +40,7 @@ const AdminChatPage = lazy(() => import('./pages/admin/AdminChatPage'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'))
 const AdminNewsletterPage = lazy(() => import('./pages/admin/AdminNewsletterPage'))
 const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'))
+const AdminSiteContentPage = lazy(() => import('./pages/admin/AdminSiteContentPage'))
 
 function RouteLoader() {
   return (
@@ -55,7 +55,6 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <ApiStatusBanner />
           <Suspense fallback={<RouteLoader />}>
             <Routes>
               {/* Public site */}
@@ -96,6 +95,7 @@ export default function App() {
                   <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />
                   <Route path="/admin/import" element={<AdminImportPage />} />
                   <Route path="/admin/settings" element={<AdminSettingsPage />} />
+                  <Route path="/admin/site-content" element={<AdminSiteContentPage />} />
                 </Route>
               </Route>
             </Routes>

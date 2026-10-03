@@ -1,3 +1,4 @@
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.urls import reverse
 
@@ -45,3 +46,22 @@ class Product(models.Model):
         if q<=10: return 'low'
         return 'in'
 
+
+class ProductReview(models.Model):
+    """Public product review. Always starts 'pending'; only 'approved' reviews are ever shown."""
+    STATUS = [('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')]
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
+    name = models.CharField(max_length=80)
+    rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])
+    comment = models.TextField(max_length=1500)
+    status = models.CharField(max_length=10, choices=STATUS, default='pending', db_index=True)
+    ip_hash = models.CharField(max_length=64, blank=True)  # salted hash, never the raw IP
+    created_at = models.DateTimeField(auto_now_add=True)
+    moderated_at = models.DateTimeField(null=True, blank=True)
+    moderated_by = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.product.name} — {self.rating}★ by {self.name} [{self.status}]'

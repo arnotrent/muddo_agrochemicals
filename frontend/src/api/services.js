@@ -18,6 +18,23 @@ export const productsApi = {
   remove: (id) => api.delete(`/products/${id}/`),
 }
 
+// ── Reviews ──────────────────────────────────────────────────────
+export const reviewsApi = {
+  list: (productId) => api.get(`/products/${productId}/reviews/`),
+  submit: (productId, data) => api.post(`/products/${productId}/reviews/`, data),
+  adminList: (params) => api.get('/admin/reviews/', { params }),
+  adminSetStatus: (id, status) => api.patch(`/admin/reviews/${id}/`, { status }),
+  adminDelete: (id) => api.delete(`/admin/reviews/${id}/`),
+}
+
+// ── Leadership ───────────────────────────────────────────────────
+export const leadershipApi = {
+  list: () => api.get('/leadership/'),
+  create: (fd) => api.post('/leadership/', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id, fd) => api.patch(`/leadership/${id}/`, fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  remove: (id) => api.delete(`/leadership/${id}/`),
+}
+
 // ── Distributors ─────────────────────────────────────────────────
 export const distributorsApi = {
   list: (params) => api.get('/distributors/', { params }),
@@ -62,10 +79,11 @@ export const supplyRequestsApi = {
 // ── Messaging ────────────────────────────────────────────────────
 export const messagingApi = {
   list: (params) => api.get('/messages/', { params }),
-  send: (formData) => api.post('/messages/send/', formData,
-    formData instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : undefined),
+  send: (formData, onUploadProgress) => api.post('/messages/send/', formData, { onUploadProgress, timeout: 120000 }),
   unread: () => api.get('/messages/unread/'),
   markRead: (data) => api.post('/messages/mark-read/', data),
+  files: (params) => api.get('/messages/files/', { params }),
+  link: (id) => api.get(`/messages/attachments/${id}/link/`),
   adminContacts: () => api.get('/admin/chat/contacts/'),
   agentContacts: () => api.get('/agent/chat/contacts/'),
 }

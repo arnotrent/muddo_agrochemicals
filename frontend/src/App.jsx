@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
 import { RequireRole } from './routes/guards'
-import ConnectionBanner from './components/ConnectionBanner'
+import ApiStatusBanner from './components/ApiStatusBanner'
 
 import PublicLayout from './layouts/PublicLayout'
 import AdminLayout from './layouts/AdminLayout'
@@ -11,7 +11,11 @@ import PortalLayout from './layouts/PortalLayout'
 import HomePage from './pages/public/HomePage'
 import NotFoundPage from './pages/public/NotFoundPage'
 
-// Code-split: each page downloads only when visited.
+// Everything below is code-split: each page only downloads when the
+// person actually navigates to it, instead of all being bundled into
+// one large file the browser has to fetch before anything renders.
+// HomePage and NotFoundPage stay eager since they're the two most
+// likely first paints (direct landing, or a bad link).
 const ProductCategoryPage = lazy(() => import('./pages/public/ProductCategoryPage'))
 const ProductDetailPage = lazy(() => import('./pages/public/ProductDetailPage'))
 const ContactPage = lazy(() => import('./pages/public/ContactPage'))
@@ -21,8 +25,6 @@ const TrackPage = lazy(() => import('./pages/public/TrackPage'))
 const SearchPage = lazy(() => import('./pages/public/SearchPage'))
 const ComparePage = lazy(() => import('./pages/public/ComparePage'))
 const LoginPage = lazy(() => import('./pages/public/LoginPage'))
-const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'))
-const ResetPasswordPage = lazy(() => import('./pages/public/ResetPasswordPage'))
 
 const AgentDashboardPage = lazy(() => import('./pages/portal/AgentDashboardPage'))
 const AgentChatPage = lazy(() => import('./pages/portal/AgentChatPage'))
@@ -39,10 +41,6 @@ const AdminChatPage = lazy(() => import('./pages/admin/AdminChatPage'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'))
 const AdminNewsletterPage = lazy(() => import('./pages/admin/AdminNewsletterPage'))
 const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'))
-const AdminSiteContentPage = lazy(() => import('./pages/admin/AdminSiteContentPage'))
-const AdminReviewsPage = lazy(() => import('./pages/admin/AdminReviewsPage'))
-const AdminLeadershipPage = lazy(() => import('./pages/admin/AdminLeadershipPage'))
-const AdminTestimonialsPage = lazy(() => import('./pages/admin/AdminTestimonialsPage'))
 
 function RouteLoader() {
   return (
@@ -57,14 +55,9 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <ConnectionBanner />
+          <ApiStatusBanner />
           <Suspense fallback={<RouteLoader />}>
             <Routes>
-              {/* Sign-in / recovery: standalone screens — no site header or footer */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-
               {/* Public site */}
               <Route element={<PublicLayout />}>
                 <Route path="/" element={<HomePage />} />
@@ -76,6 +69,7 @@ export default function App() {
                 <Route path="/track" element={<TrackPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/compare" element={<ComparePage />} />
+                <Route path="/login" element={<LoginPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
 
@@ -88,7 +82,7 @@ export default function App() {
                 </Route>
               </Route>
 
-              {/* Admin panel — every sidebar link has a route (missing ones rendered the 404 page) */}
+              {/* Admin panel */}
               <Route element={<RequireRole role="admin" />}>
                 <Route element={<AdminLayout />}>
                   <Route path="/admin" element={<AdminDashboardPage />} />
@@ -96,16 +90,12 @@ export default function App() {
                   <Route path="/admin/inventory" element={<AdminInventoryPage />} />
                   <Route path="/admin/distributors" element={<AdminDistributorsPage />} />
                   <Route path="/admin/requests" element={<AdminRequestsPage />} />
-                  <Route path="/admin/reviews" element={<AdminReviewsPage />} />
-                  <Route path="/admin/testimonials" element={<AdminTestimonialsPage />} />
-                  <Route path="/admin/leadership" element={<AdminLeadershipPage />} />
                   <Route path="/admin/supply-requests" element={<AdminSupplyRequestsPage />} />
                   <Route path="/admin/agents" element={<AdminAgentsPage />} />
                   <Route path="/admin/chat" element={<AdminChatPage />} />
                   <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />
                   <Route path="/admin/import" element={<AdminImportPage />} />
                   <Route path="/admin/settings" element={<AdminSettingsPage />} />
-                  <Route path="/admin/site-content" element={<AdminSiteContentPage />} />
                 </Route>
               </Route>
             </Routes>

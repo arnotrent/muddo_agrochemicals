@@ -23,7 +23,7 @@ function Field({ label, children, hint, required }) {
 function Cascade({ label, value, options, onChange, placeholder, required, disabled }) {
   const known = options.includes(value)
   const [custom, setCustom] = useState(!!value && !known)
-  useEffect(() => { setCustom(!!value && !options.includes(value)) }, [options.join('|')]) // eslint-disable-line
+  useEffect(() => { setCustom(!!value && !options.includes(value)) }, [options.join('|'), value]) // eslint-disable-line
   if (!options.length) {
     return <Field label={label} required={required}><input value={value} required={required} disabled={disabled} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className={inputCls} /></Field>
   }
@@ -58,6 +58,11 @@ export default function AdminDistributorsPage() {
   const hint = [form.town, form.district, form.region, form.country].filter(Boolean).join(', ')
   const hasPin = Number.isFinite(form.lat) && Number.isFinite(form.lng) && !(form.lat === 0 && form.lng === 0)
 
+  // Pin found a place: fill ONLY the fields still empty (never overwrite what the admin chose).
+  const fillBlanks = (a) => setForm((f) => ({ ...f, region: f.region || a.region || '', district: f.district || a.district || '', town: f.town || a.town || '' }))
+  // Admin accepted the detected area: overwrite region + district.
+  const useDetected = (a) => setForm((f) => ({ ...f, region: a.region || f.region, district: a.district || f.district, town: f.town || a.town || '' }))
+
   const close = () => { setOpen(false); setEditing(null); setForm(EMPTY) }
   const openNew = () => { setFlash(null); setEditing(null); setForm(EMPTY); setOpen(true) }
 
@@ -66,9 +71,8 @@ export default function AdminDistributorsPage() {
     setFlash(null)
     if (!hasPin) return setFlash({ ok: false, msg: 'Please set the outlet\u2019s exact spot on the map (click it, search a place, or enter coordinates).' })
     setSaving(true)
-    const payload = { ...form }
     try {
-      if (editing) await distributorsApi.update(editing, payload); else await distributorsApi.create(payload)
+      if (editing) await distributorsApi.update(editing, form); else await distributorsApi.create(form)
       setFlash({ ok: true, msg: editing ? 'Outlet updated.' : 'Outlet added.' })
       close(); load()
     } catch (err) {
@@ -109,11 +113,11 @@ export default function AdminDistributorsPage() {
             <div>
               <Field label="Outlet name" required><input required value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} /></Field>
               <Field label="Country" required>
-                <select value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value, region: '', district: '' }))} className={inputCls}>{COUNTRIES.map((c) => <option key={c}>{c}</option>)}</select>
+                <select value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value, region: '', district: '', town: '', lat: NaN, lng: NaN }))} className={inputCls}>{COUNTRIES.map((c) => <option key={c}>{c}</option>)}</select>
               </Field>
               <Cascade label={REGION_LABEL[form.country] || 'Region'} value={form.region} options={regions} required onChange={(v) => setForm((f) => ({ ...f, region: v, district: '' }))} placeholder="e.g. Central" />
               <Cascade label={DISTRICT_LABEL[form.country] || 'District'} value={form.district} options={districts} required disabled={!form.region} onChange={(v) => set('district', v)} placeholder={form.region ? 'e.g. Kampala' : 'Choose the region first'} />
-              <Field label="City / town / trading centre" hint="Optional — the town or trading centre the shop is in."><input value={form.town} onChange={(e) => set('town', e.target.value)} placeholder="e.g. Katooke" className={inputCls} /></Field>
+              <Field label="City / town / trading centre" hint="Optional — the map zooms here as you type."><input value={form.town} onChange={(e) => set('town', e.target.value)} placeholder="e.g. Katooke" className={inputCls} /></Field>
               <Field label="Street address"><input value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="e.g. Main Street, Plot 12" className={inputCls} /></Field>
               <Field label="Location description" hint="Optional — landmarks and directions customers will see, e.g. “Opposite Katooke market, next to the mosque.”">
                 <textarea rows={3} maxLength={1000} value={form.location_details} onChange={(e) => set('location_details', e.target.value)} className={`${inputCls} resize-y`} /></Field>
@@ -123,8 +127,9 @@ export default function AdminDistributorsPage() {
               </div>
             </div>
             <div>
-              <Field label="Exact location on the map" required hint="Search the town, then click the map or drag the pin onto the shop itself. The server checks the pin is inside the chosen country.">
-                <LocationPicker lat={form.lat} lng={form.lng} country={form.country} hint={hint} onChange={(la, ln) => setForm((f) => ({ ...f, lat: la, lng: ln }))} />
+              <Field label="Exact location on the map" required hint="The map zooms to the area you describe and the pin is locked to it. Start typing a place for suggestions, then click the map or drag the pin onto the shop itself.">
+                <LocationPicker lat={form.lat} lng={form.lng} country={form.country} region={form.region} district={form.district} town={form.town} hint={hint}
+                  onChange={(la, ln) => setForm((f) => ({ ...f, lat: la, lng: ln }))} onAreaDetected={fillBlanks} onUseDetected={useDetected} />
               </Field>
             </div>
           </div>

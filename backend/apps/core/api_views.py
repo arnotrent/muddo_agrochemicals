@@ -1,27 +1,31 @@
+import logging
 from django.core.mail import send_mail
 from django.conf import settings
-from django.db.models import Q
 from rest_framework import generics, status, permissions
-from rest_framework.decorators import api_view, permission_classes, throttle_classes, parser_classes
+from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
 from apps.core.models import ContactRequest, NewsletterSubscriber, SiteSettings, FAQ, StaffProfile
+from apps.core.notify import company_recipients, company_contact_line
 from apps.core.permissions import IsAdmin, IsAdminOrReadOnly
 from apps.core.serializers import (
     ContactRequestSerializer, ContactRequestAdminSerializer, NewsletterSubscriberSerializer,
     SiteSettingsSerializer, FAQSerializer, StaffProfileSerializer,
 )
+from apps.core.throttles import ContactThrottle, NewsletterThrottle, TrackThrottle
+from apps.core.track_serializers import ContactTrackSerializer
 from apps.core.validators import validate_image_upload
+
+logger = logging.getLogger('django.request')
 
 
 def _send(subj, to, body):
     try:
         send_mail(subj, body, settings.DEFAULT_FROM_EMAIL, to, fail_silently=True)
     except Exception:
-        pass
+        logger.exception('Could not send e-mail "%s"', subj)
 
 
 # ── Public: Contact ────────────────────────────────────────────────
@@ -30,36 +34,37 @@ class ContactCreateView(generics.CreateAPIView):
     queryset = ContactRequest.objects.all()
     serializer_class = ContactRequestSerializer
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [ScopedRateThrottle]
-    throttle_scope = 'contact'
+    throttle_classes = [ContactThrottle]
 
     def perform_create(self, serializer):
         cr = serializer.save()
         site = SiteSettings.load()
         _send(f'Muddo Agro \u2014 Enquiry Received [{cr.ref_number}]', [cr.email],
               f"Dear {cr.name},\n\nThank you for contacting Muddo Agro Chemicals LTD.\n"
-              f"Your reference: {cr.ref_number}\n\nWe'll respond within 1 business day.\n\n"
-              f"Muddo Agro Team\n{site.company_phone}")
-        _send(f'New Enquiry [{cr.ref_number}] \u2014 {cr.subject}', [site.company_email],
+              f"Your reference: {cr.ref_number}\n"
+              f"You can follow its progress any time on our website: Track Enquiry.\n\n"
+              f"We'll respond within 1 business day.\n\nMuddo Agro Team\n{company_contact_line()}")
+        _send(f'New Enquiry [{cr.ref_number}] \u2014 {cr.subject}', company_recipients(site),
               f"From: {cr.name} <{cr.email}>\nPhone: {cr.phone}\nSubject: {cr.subject}\n\n{cr.message}")
 
 
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
+@throttle_classes([TrackThrottle])
 def track_enquiry_view(request):
-    """GET /api/v1/contact/track/?ref=ENQ-XXXX"""
+    """GET /api/v1/contact/track/?ref=ENQ-XXXXXXXX — masked, throttled."""
     ref = (request.GET.get('ref') or '').strip().upper()
     if not ref:
         return Response({'detail': 'A reference number is required.'}, status=400)
-    try:
-        cr = ContactRequest.objects.get(ref_number=ref)
-    except ContactRequest.DoesNotExist:
+    if len(ref) > 20:
         return Response({'found': False})
-    return Response({'found': True, 'result': ContactRequestSerializer(cr).data})
+    cr = ContactRequest.objects.filter(ref_number=ref).first()
+    if not cr:
+        return Response({'found': False})
+    return Response({'found': True, 'result': ContactTrackSerializer(cr).data})
 
 
 class AdminContactListView(generics.ListAPIView):
-    """GET /api/v1/admin/contact-requests/ — staff only."""
     queryset = ContactRequest.objects.order_by('-created_at')
     serializer_class = ContactRequestAdminSerializer
     permission_classes = [IsAdmin]
@@ -77,9 +82,8 @@ class AdminContactUpdateView(generics.UpdateAPIView):
 # ── Public: Newsletter ─────────────────────────────────────────────
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
-@throttle_classes([ScopedRateThrottle])
+@throttle_classes([NewsletterThrottle])
 def subscribe_view(request):
-    subscribe_view.throttle_scope = 'newsletter'
     serializer = NewsletterSubscriberSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     email = serializer.validated_data['email']
@@ -99,9 +103,8 @@ class AdminNewsletterListView(generics.ListAPIView):
     permission_classes = [IsAdmin]
 
 
-# ── Public: FAQ + Site settings ────────────────────────────────────
+# ── FAQ + Site settings ────────────────────────────────────────────
 class FAQListView(generics.ListAPIView):
-    """Public GET returns only active FAQs; admins get everything + write access via AdminFAQViewSet."""
     serializer_class = FAQSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -125,7 +128,6 @@ class AdminFAQCreateView(generics.CreateAPIView):
 
 
 class SiteSettingsView(APIView):
-    """GET is public (footer/about/contact need it); PATCH is admin-only."""
     permission_classes = [IsAdminOrReadOnly]
 
     def get(self, request):
@@ -139,7 +141,6 @@ class SiteSettingsView(APIView):
         return Response(serializer.data)
 
 
-# ── Staff self-service profile ─────────────────────────────────────
 class MyStaffProfileView(APIView):
     permission_classes = [IsAdmin]
     parser_classes = [MultiPartParser, FormParser]
@@ -158,7 +159,6 @@ class MyStaffProfileView(APIView):
         return Response(serializer.data)
 
 
-# ── Public: global search across products + distributors ──────────
 @api_view(['GET'])
 @permission_classes([permissions.AllowAny])
 def global_search_view(request):
@@ -174,7 +174,7 @@ def global_search_view(request):
     products = (Product.objects.filter(name__icontains=q) | Product.objects.filter(active_ingredient__icontains=q) |
                 Product.objects.filter(crops__icontains=q) | Product.objects.filter(description__icontains=q)).distinct()[:20]
     distributors = (Distributor.objects.filter(name__icontains=q) | Distributor.objects.filter(district__icontains=q) |
-                     Distributor.objects.filter(region__icontains=q)).distinct()[:10]
+                    Distributor.objects.filter(region__icontains=q)).distinct()[:10]
 
     return Response({
         'q': q,

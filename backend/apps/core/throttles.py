@@ -1,13 +1,6 @@
 """
-Real rate limits that never crash the request.
-
-Two historical problems are fixed here:
- 1. The original code set `view.throttle_scope = ...` INSIDE the view body, so login /
-    newsletter throttling never applied.
- 2. Throttle classes that read their rate ONLY from settings raise ImproperlyConfigured
-    (-> a generic HTTP 500 "An unexpected error occurred") whenever the scope is missing
-    from REST_FRAMEWORK['DEFAULT_THROTTLE_RATES'] — e.g. if settings.py wasn't patched.
-    Every scope below therefore has a built-in default; settings may still override it.
+Real rate limits that never crash the request. Every scope has a built-in default, so a missing
+entry in settings can never turn into an HTTP 500 (ImproperlyConfigured).
 """
 from django.conf import settings
 from rest_framework.throttling import SimpleRateThrottle
@@ -18,6 +11,9 @@ DEFAULT_RATES = {
     'review': '5/hour',
     'chat': '90/min',
     'testimonial': '8/hour',
+    'contact': '5/min',
+    'track': '20/min',
+    'recovery': '6/hour',
 }
 
 
@@ -32,21 +28,11 @@ class _PerClientThrottle(SimpleRateThrottle):
         return self.cache_format % {'scope': self.scope, 'ident': ident}
 
 
-class AuthThrottle(_PerClientThrottle):
-    scope = 'auth'
-
-
-class NewsletterThrottle(_PerClientThrottle):
-    scope = 'newsletter'
-
-
-class ReviewThrottle(_PerClientThrottle):
-    scope = 'review'
-
-
-class ChatSendThrottle(_PerClientThrottle):
-    scope = 'chat'
-
-
-class TestimonialThrottle(_PerClientThrottle):
-    scope = 'testimonial'
+class AuthThrottle(_PerClientThrottle): scope = 'auth'
+class NewsletterThrottle(_PerClientThrottle): scope = 'newsletter'
+class ReviewThrottle(_PerClientThrottle): scope = 'review'
+class ChatSendThrottle(_PerClientThrottle): scope = 'chat'
+class TestimonialThrottle(_PerClientThrottle): scope = 'testimonial'
+class ContactThrottle(_PerClientThrottle): scope = 'contact'
+class TrackThrottle(_PerClientThrottle): scope = 'track'
+class RecoveryThrottle(_PerClientThrottle): scope = 'recovery'

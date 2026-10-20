@@ -14,7 +14,7 @@ REQUIRED_ROUTES = {
     'api_product_reviews': [1], 'api_admin_reviews': [], 'api_admin_review_detail': [1],
     'leader-list': [], 'leader-detail': [1],
     'api_testimonials': [], 'api_testimonial_submit': [], 'api_admin_testimonials': [], 'api_admin_testimonial_detail': [1],
-    'api_notifications_summary': [], 'api_pw_reset_request': [], 'api_pw_reset_confirm': [],
+    'api_notifications_summary': [], 'api_admin_enquiry_reply': [1], 'api_admin_enquiry_assign': [1], 'api_agent_enquiries': [], 'api_review_edit': ['product', 'x'], 'api_recent_reviews': [], 'api_pw_reset_request': [], 'api_pw_reset_confirm': [],
     'api_messages_list': [], 'api_messages_send': [], 'api_admin_chat_contacts': [], 'api_agent_chat_contacts': [],
 }
 

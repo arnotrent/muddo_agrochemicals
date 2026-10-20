@@ -2,6 +2,8 @@ import secrets, string
 from django.db import models
 from django.contrib.auth.models import User
 
+from apps.core.media import public_media_url
+
 _ALPHABET = string.ascii_uppercase + string.digits
 
 
@@ -22,12 +24,34 @@ class ContactRequest(models.Model):
     subject = models.CharField(max_length=100, choices=SUBJECTS)
     message = models.TextField(); status = models.CharField(max_length=20, choices=STATUS, default='new')
     email_sent = models.BooleanField(default=False); created_at = models.DateTimeField(auto_now_add=True)
+    # Workflow: the admin can answer directly or FORWARD the enquiry to a field agent, who answers the customer.
+    assigned_agent = models.ForeignKey('agents.Agent', null=True, blank=True, on_delete=models.SET_NULL, related_name='assigned_enquiries')
+    assigned_at = models.DateTimeField(null=True, blank=True)
+    assigned_note = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return f"[{self.ref_number}] {self.name}"
+
+
+class EnquiryReply(models.Model):
+    """One entry in an enquiry's history: a reply sent to the customer, a forward to an agent, or an internal note."""
+    KINDS = [('reply', 'Reply to customer'), ('forward', 'Forwarded to agent'), ('note', 'Internal note')]
+    enquiry = models.ForeignKey(ContactRequest, on_delete=models.CASCADE, related_name='replies')
+    author_role = models.CharField(max_length=10)          # admin | agent
+    author_name = models.CharField(max_length=150)
+    kind = models.CharField(max_length=10, choices=KINDS, default='reply')
+    message = models.TextField()
+    emailed = models.BooleanField(default=False)           # was the e-mail to the customer actually accepted for delivery?
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'id']
+
+    def __str__(self):
+        return f'{self.enquiry.ref_number} · {self.kind} by {self.author_name}'
 
 
 class NewsletterSubscriber(models.Model):
@@ -55,10 +79,7 @@ class StaffProfile(models.Model):
 
     @property
     def avatar_url(self):
-        try:
-            return self.avatar.url if self.avatar else None
-        except ValueError:
-            return None
+        return public_media_url(self.avatar)
 
 
 class SiteSettings(models.Model):

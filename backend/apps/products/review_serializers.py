@@ -14,25 +14,30 @@ class ReviewPublicSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'rating', 'comment', 'created_at']
 
 
+class ReviewRecentSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+
+    class Meta:
+        model = ProductReview
+        fields = ['id', 'product', 'product_name', 'name', 'rating', 'comment', 'created_at']
+
+
 class ReviewCreateSerializer(serializers.Serializer):
     name = serializers.CharField(min_length=2, max_length=80)
     rating = serializers.IntegerField(min_value=1, max_value=5)
     comment = serializers.CharField(min_length=10, max_length=1500)
     website = serializers.CharField(required=False, allow_blank=True, default='')  # honeypot
 
-    def validate_name(self, v):
-        return ' '.join(v.split())
-
-    def validate_comment(self, v):
-        return v.strip()
+    def validate_name(self, v): return ' '.join(v.split())
+    def validate_comment(self, v): return v.strip()
 
 
 class ReviewAdminSerializer(serializers.ModelSerializer):
+    """Admins can now EDIT a review's name / rating / text (e.g. fix spelling) as well as approve or reject it."""
     product_name = serializers.CharField(source='product.name', read_only=True)
 
     class Meta:
         model = ProductReview
         fields = ['id', 'product', 'product_name', 'name', 'rating', 'comment', 'status',
                   'created_at', 'moderated_at', 'moderated_by']
-        read_only_fields = ['id', 'product', 'name', 'rating', 'comment', 'created_at',
-                            'moderated_at', 'moderated_by']
+        read_only_fields = ['id', 'product', 'created_at', 'moderated_at', 'moderated_by']

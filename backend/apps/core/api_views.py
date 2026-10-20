@@ -11,7 +11,7 @@ from apps.core.models import ContactRequest, NewsletterSubscriber, SiteSettings,
 from apps.core.notify import company_recipients, company_contact_line
 from apps.core.permissions import IsAdmin, IsAdminOrReadOnly
 from apps.core.serializers import (
-    ContactRequestSerializer, ContactRequestAdminSerializer, NewsletterSubscriberSerializer,
+    ContactRequestSerializer, NewsletterSubscriberSerializer,
     SiteSettingsSerializer, FAQSerializer, StaffProfileSerializer,
 )
 from apps.core.throttles import ContactThrottle, NewsletterThrottle, TrackThrottle
@@ -62,21 +62,6 @@ def track_enquiry_view(request):
     if not cr:
         return Response({'found': False})
     return Response({'found': True, 'result': ContactTrackSerializer(cr).data})
-
-
-class AdminContactListView(generics.ListAPIView):
-    queryset = ContactRequest.objects.order_by('-created_at')
-    serializer_class = ContactRequestAdminSerializer
-    permission_classes = [IsAdmin]
-    filterset_fields = ['status']
-    search_fields = ['name', 'email', 'subject']
-
-
-class AdminContactUpdateView(generics.UpdateAPIView):
-    queryset = ContactRequest.objects.all()
-    serializer_class = ContactRequestAdminSerializer
-    permission_classes = [IsAdmin]
-    http_method_names = ['patch']
 
 
 # ── Public: Newsletter ─────────────────────────────────────────────

@@ -58,6 +58,9 @@ def notifications_summary_view(request):
         bc = Message.objects.filter(is_broadcast=True).exclude(sender_role='agent', sender_id=agent.id)
         link = '/portal/chat'
 
+    # Delivery receipts (grey double tick): everything addressed to me counts as delivered the moment my client polls.
+    dm.filter(delivered_at__isnull=True).update(delivered_at=timezone.now())
+
     seen = BroadcastRead.objects.filter(reader_id=my_id, reader_role=my_role).values('message_id')
     counts['messages'] = dm.filter(read=False).count() + bc.exclude(pk__in=seen).count()
 
@@ -99,6 +102,7 @@ def notifications_summary_view(request):
               lambda o: f'New testimonial from {o.name}', lambda o: o.message[:80], 'testimonials')
     else:
         counts['supply'] = SupplyRequest.objects.filter(agent=user.agent_profile, status='pending').count()
+        counts['enquiries'] = ContactRequest.objects.filter(assigned_agent=user.agent_profile).exclude(status='resolved').count()
 
     events.sort(key=lambda e: e['created_at'])
     return Response({'counts': counts, 'cursors': cursors, 'events': events[-12:]})

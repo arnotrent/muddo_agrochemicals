@@ -1,18 +1,19 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from apps.core.media import public_media_url
+
 
 class Testimonial(models.Model):
     """
-    A customer testimonial shown on the home page.
+    A customer review of Muddo Agro / its products shown on the website.
     Public submissions start 'pending' and are never shown until an admin approves them.
-    Admin-created testimonials are approved straight away. Photo is optional.
     """
     STATUS = [('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')]
     SOURCE = [('public', 'Public form'), ('admin', 'Added by admin')]
 
     name = models.CharField(max_length=80)
-    role = models.CharField(max_length=120, blank=True)  # e.g. "Tomato farmer, Mbale"
+    role = models.CharField(max_length=120, blank=True)
     message = models.TextField(max_length=1000)
     rating = models.PositiveSmallIntegerField(null=True, blank=True,
                                               validators=[MinValueValidator(1), MaxValueValidator(5)])
@@ -35,7 +36,4 @@ class Testimonial(models.Model):
 
     @property
     def photo_path(self):
-        try:
-            return self.photo.url if self.photo else None
-        except ValueError:
-            return None
+        return public_media_url(self.photo)

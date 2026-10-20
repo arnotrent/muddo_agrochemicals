@@ -1,12 +1,14 @@
 from django.db import models
 
+from apps.core.media import public_media_url
+
 
 class Leader(models.Model):
     """A member of Muddo Agro's leadership team, shown on the About page."""
     name = models.CharField(max_length=120)
     title = models.CharField(max_length=120)
     bio = models.TextField(blank=True, max_length=800)
-    greeting = models.TextField(blank=True, max_length=1500)  # their personal welcome / message to visitors
+    greeting = models.TextField(blank=True, max_length=1500)
     photo = models.ImageField(upload_to='leadership/', blank=True, null=True)
     order = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)
@@ -20,7 +22,4 @@ class Leader(models.Model):
 
     @property
     def photo_path(self):
-        try:
-            return self.photo.url if self.photo else None
-        except ValueError:
-            return None
+        return public_media_url(self.photo)

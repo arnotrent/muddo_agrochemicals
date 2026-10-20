@@ -33,6 +33,15 @@ export default function Composer({ onSend, disabled, replyTo, onCancelReply, ext
   const fileRef = useRef(null)
   const imgRef = useRef(null)
   const taRef = useRef(null)
+  const wrapRef = useRef(null)
+  const [narrow, setNarrow] = useState(false) // composer is under ~400px wide → stack textarea above the buttons
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 400))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   const add = (list) => {
     const incoming = Array.from(list || [])
@@ -53,8 +62,8 @@ export default function Composer({ onSend, disabled, replyTo, onCancelReply, ext
 
   useEffect(() => { // auto-grow textarea
     const t = taRef.current
-    if (t) { t.style.height = 'auto'; t.style.height = `${Math.min(t.scrollHeight, 140)}px` }
-  }, [text])
+    if (t) { t.style.height = '44px'; t.style.height = `${Math.min(Math.max(t.scrollHeight, 44), 140)}px` }
+  }, [text, narrow])
 
   const submit = async (e) => {
     e?.preventDefault()
@@ -73,7 +82,7 @@ export default function Composer({ onSend, disabled, replyTo, onCancelReply, ext
   }
 
   return (
-    <div className="border-t border-border bg-bg-card flex-shrink-0">
+    <div ref={wrapRef} className="border-t border-border bg-bg-card flex-shrink-0 min-w-0">
       {replyTo && (
         <div className="px-4 py-2 border-b border-border bg-bg-alt flex justify-between items-center gap-2.5">
           <div className="text-sm text-text-2 min-w-0"><strong className="text-accent-blue block text-xs">Replying to {replyTo.name}</strong><span className="text-text-3 truncate block">{replyTo.preview}</span></div>
@@ -86,15 +95,21 @@ export default function Composer({ onSend, disabled, replyTo, onCancelReply, ext
           {files.map((f, i) => <Chip key={`${f.name}-${i}`} file={f} onRemove={() => setFiles((p) => p.filter((_, j) => j !== i))} />)}
         </div>
       )}
-      <form onSubmit={submit} className="p-3 flex items-end gap-2">
+      <form onSubmit={submit} className={`p-3 flex gap-2 ${narrow ? 'flex-col' : 'items-end'}`}>
         <input ref={fileRef} type="file" multiple accept={ACCEPT} className="hidden" onChange={(e) => { add(e.target.files); e.target.value = '' }} />
         <input ref={imgRef} type="file" multiple accept="image/*" className="hidden" onChange={(e) => { add(e.target.files); e.target.value = '' }} />
-        <button type="button" onClick={() => fileRef.current?.click()} aria-label="Attach files" title="Attach files" className="w-10 h-10 rounded-full border border-border bg-bg-alt text-text-2 hover:text-accent-blue flex items-center justify-center flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-blue"><ChatIcon name="paperclip" size="1.15rem" /></button>
-        <button type="button" onClick={() => imgRef.current?.click()} aria-label="Attach photos" title="Attach photos" className="w-10 h-10 rounded-full border border-border bg-bg-alt text-text-2 hover:text-accent-blue flex items-center justify-center flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-blue"><ChatIcon name="image" size="1.15rem" /></button>
-        <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste} rows={1} maxLength={5000} aria-label="Write a message"
+        {narrow && <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste} rows={1} maxLength={5000} aria-label="Write a message"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
-          placeholder="Write a message…" className="flex-1 resize-none rounded-2xl px-4 py-2.5 bg-bg-alt border border-transparent focus:bg-bg-input focus:border-accent-blue outline-none text-text-1 max-h-[140px]" />
-        <button type="submit" disabled={disabled || (!text.trim() && !files.length)} aria-label="Send message" className="w-10 h-10 rounded-full bg-accent-blue text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-blue"><ChatIcon name="send" /></button>
+          placeholder="Write a message…" style={{ minHeight: 44 }} className="w-full min-w-0 resize-none rounded-2xl px-4 py-2.5 bg-bg-alt border border-transparent focus:bg-bg-input focus:border-accent-blue outline-none text-text-1 leading-snug [overflow-wrap:anywhere]" />}
+        <div className={`flex items-center gap-2 ${narrow ? '' : 'contents'}`}>
+          <button type="button" onClick={() => fileRef.current?.click()} aria-label="Attach files" title="Attach files" className="w-10 h-10 rounded-full border border-border bg-bg-alt text-text-2 hover:text-accent-blue flex items-center justify-center flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-blue"><ChatIcon name="paperclip" size="1.15rem" /></button>
+          <button type="button" onClick={() => imgRef.current?.click()} aria-label="Attach photos" title="Attach photos" className="w-10 h-10 rounded-full border border-border bg-bg-alt text-text-2 hover:text-accent-blue flex items-center justify-center flex-shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-blue"><ChatIcon name="image" size="1.15rem" /></button>
+          {!narrow && <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} onPaste={onPaste} rows={1} maxLength={5000} aria-label="Write a message"
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit() } }}
+            placeholder="Write a message…" style={{ minHeight: 44, flex: '1 1 0%', minWidth: 0 }} className="resize-none rounded-2xl px-4 py-2.5 bg-bg-alt border border-transparent focus:bg-bg-input focus:border-accent-blue outline-none text-text-1 leading-snug [overflow-wrap:anywhere]" />}
+          {narrow && <span className="flex-1" />}
+          <button type="submit" disabled={disabled || (!text.trim() && !files.length)} aria-label="Send message" className="w-10 h-10 rounded-full bg-accent-blue text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-blue"><ChatIcon name="send" /></button>
+        </div>
       </form>
     </div>
   )

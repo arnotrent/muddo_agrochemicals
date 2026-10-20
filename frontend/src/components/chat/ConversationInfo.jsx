@@ -64,9 +64,9 @@ export default function ConversationInfo({ current, onClose, onOpenFile, onViewA
     </div>
   )
 
-  if (!drawer) return <aside className="w-[300px] border-l border-border bg-bg-card flex-shrink-0 hidden xl:block" aria-label="Conversation information">{body}</aside>
+  if (!drawer) return <aside className="w-[300px] border-l border-border bg-bg-card flex-shrink-0" aria-label="Conversation information">{body}</aside>
   return (
-    <div className="fixed inset-0 z-[3000] bg-black/50 xl:hidden" onClick={onClose}>
+    <div className="fixed inset-0 z-[3000] bg-black/50" onClick={onClose}>
       <aside className="absolute right-0 top-0 h-full w-[88vw] max-w-[340px] bg-bg-card animate-drawerIn" onClick={(e) => e.stopPropagation()} aria-label="Conversation information">
         <button onClick={onClose} aria-label="Close panel" className="absolute top-3 right-3 text-text-3 z-10"><ChatIcon name="x" size="1.2rem" /></button>
         {body}

@@ -90,7 +90,9 @@ export function useChat() {
       if (targetRef.current === target) setMessages((prev) => (prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message]))
       setTimeout(() => setPending((p) => p.filter((d) => d.localId !== draft.localId)), 600)
     } catch (err) {
-      upd({ state: 'failed', error: err.response?.data?.detail || err.response?.data?.errors?.detail?.[0] || 'Failed to send' })
+      const d = err.response?.data
+      const first = (v) => (Array.isArray(v) ? v[0] : v)
+      upd({ state: 'failed', error: first(d?.errors?.detail) || first(d?.detail) || (err.code === 'ERR_NETWORK' ? 'No connection to the server.' : 'Failed to send') })
     }
   }, [])
 

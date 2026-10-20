@@ -21,6 +21,14 @@ export const PHOTOS = {
     P('field_range_with_sprayers.jpg', 'MACL product range with Farmate and Muddo Super knapsack sprayers', 'The MACL range with knapsack sprayers', 1800, 956),
   ],
 }
+const ALL = Object.fromEntries(Object.values(PHOTOS).flat().map((p) => [p.id, p]))
+
+// Home page "Our Range in Focus": one showcase per category, each linking to its catalogue page.
+export const HOME_SHOWCASE = [
+  { photo: ALL['field_herbicides_sugarcane_sorghum.jpg'], title: 'Herbicides', blurb: 'M-D Ametryn, MD MAX 2,4-D, MUDDOSATE and MD MAIZE PLUS — weed control from sugarcane to maize.', to: '/products/herbicides' },
+  { photo: ALL['field_fos_insecticide_poster.jpg'], title: 'Pesticides', blurb: 'M-D FOS, MD ACELEMECTIN, MD THION — knock down the pests that cost you the harvest.', to: '/products/pesticides' },
+  { photo: ALL['field_pesticide_fungicide_range.jpg'], title: 'Fungicides', blurb: 'TOP-LAXLY M 72WP protects tomatoes, beans, onions and potatoes from blight and mildew.', to: '/products/fungicides' },
+]
 
 // Product-detail pages: which photos are relevant to which product (matched by name).
 const BY_NAME = [
@@ -31,7 +39,6 @@ const BY_NAME = [
   [/top.?lax|acelemectin|thion|thoate|benzo/i, ['field_pesticide_fungicide_range.jpg', 'field_pests_caterpillars.jpg']],
   [/sprayer/i, ['field_range_with_sprayers.jpg']],
 ]
-const ALL = Object.fromEntries(Object.values(PHOTOS).flat().map((p) => [p.id, p]))
 
 export function photosForProduct(name = '') {
   const hit = BY_NAME.find(([re]) => re.test(name))

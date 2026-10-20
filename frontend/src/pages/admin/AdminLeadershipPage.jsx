@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import { leadershipApi } from '../../api/services'
 import Icon from '../../components/Icon'
 
-const EMPTY = { name: '', title: '', bio: '', order: 0, active: true }
+const EMPTY = { name: '', title: '', bio: '', greeting: '', order: 0, active: true }
 
 export default function AdminLeadershipPage() {
   const [leaders, setLeaders] = useState([])
   const [form, setForm] = useState(EMPTY)
   const [photo, setPhoto] = useState(null)
   const [editing, setEditing] = useState(null)
+  const [editPhoto, setEditPhoto] = useState(null) // current photo url while editing
+  const [removePhoto, setRemovePhoto] = useState(false)
   const [flash, setFlash] = useState(null)
   const [saving, setSaving] = useState(false)
 
@@ -20,10 +22,11 @@ export default function AdminLeadershipPage() {
     const fd = new FormData()
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
     if (photo) fd.append('photo', photo)
+    if (removePhoto) fd.append('remove_photo', 'true')
     try {
       if (editing) await leadershipApi.update(editing, fd); else await leadershipApi.create(fd)
       setFlash({ ok: true, msg: editing ? 'Leader updated.' : 'Leader added.' })
-      setForm(EMPTY); setPhoto(null); setEditing(null); e.target.reset(); load()
+      setForm(EMPTY); setPhoto(null); setEditing(null); setEditPhoto(null); setRemovePhoto(false); e.target.reset(); load()
     } catch (err) {
       const errs = err.response?.data?.errors
       setFlash({ ok: false, msg: (errs && Object.values(errs).flat()[0]) || err.response?.data?.detail || 'Could not save.' })
@@ -43,14 +46,17 @@ export default function AdminLeadershipPage() {
             <div key={k} className="mb-3.5"><label className="text-sm font-semibold text-text-2 block mb-1.5">{l}</label><input required={r} maxLength={120} value={form[k]} onChange={(e) => setForm((f) => ({ ...f, [k]: e.target.value }))} className={inputCls} /></div>
           ))}
           <div className="mb-3.5"><label className="text-sm font-semibold text-text-2 block mb-1.5">Short bio</label><textarea rows={4} maxLength={800} value={form.bio} onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} className={`${inputCls} resize-y`} /></div>
-          <div className="mb-3.5"><label className="text-sm font-semibold text-text-2 block mb-1.5">Photo</label><input type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] || null)} className="w-full text-sm" /></div>
+          <div className="mb-3.5"><label className="text-sm font-semibold text-text-2 block mb-1.5">Greeting / welcome message</label><textarea rows={5} maxLength={1500} value={form.greeting} onChange={(e) => setForm((f) => ({ ...f, greeting: e.target.value }))} placeholder="Shown on the About page as a personal word from this leader." className={`${inputCls} resize-y`} /></div>
+          <div className="mb-3.5"><label className="text-sm font-semibold text-text-2 block mb-1.5">Photo</label>
+            {editPhoto && !removePhoto && !photo && <div className="flex items-center gap-3 mb-2"><img src={editPhoto} alt="" className="w-14 h-14 rounded-full object-cover" /><button type="button" onClick={() => setRemovePhoto(true)} className="text-sm text-accent-red font-semibold">Remove photo</button></div>}
+            <input type="file" accept="image/*" onChange={(e) => { setPhoto(e.target.files?.[0] || null); setRemovePhoto(false) }} className="w-full text-sm" /></div>
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div><label className="text-sm font-semibold text-text-2 block mb-1.5">Display order</label><input type="number" min="0" value={form.order} onChange={(e) => setForm((f) => ({ ...f, order: e.target.value }))} className={inputCls} /></div>
             <label className="flex items-end gap-2 text-sm font-semibold text-text-2 pb-2.5"><input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4" />Visible</label>
           </div>
           <div className="flex gap-2.5">
             <button disabled={saving} className="px-5 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm disabled:opacity-60">{saving ? 'Saving…' : editing ? 'Save changes' : 'Add leader'}</button>
-            {editing && <button type="button" onClick={() => { setEditing(null); setForm(EMPTY); setPhoto(null) }} className="px-5 py-2.5 rounded-btn bg-bg-alt text-text-2 font-bold text-sm">Cancel</button>}
+            {editing && <button type="button" onClick={() => { setEditing(null); setForm(EMPTY); setPhoto(null); setEditPhoto(null); setRemovePhoto(false) }} className="px-5 py-2.5 rounded-btn bg-bg-alt text-text-2 font-bold text-sm">Cancel</button>}
           </div>
         </form>
         <div className="bg-bg-card border border-border rounded-card self-start overflow-x-auto">
@@ -63,7 +69,7 @@ export default function AdminLeadershipPage() {
                   <td className="p-3 text-text-3">{l.title}</td><td className="p-3">{l.order}</td>
                   <td className="p-3"><button onClick={() => toggle(l)} className={`px-2 py-0.5 rounded-full text-xs font-bold ${l.active ? 'bg-accent-green/15 text-accent-green' : 'bg-bg-alt text-text-3'}`}>{l.active ? 'Visible' : 'Hidden'}</button></td>
                   <td className="p-3"><div className="flex gap-1.5">
-                    <button aria-label={`Edit ${l.name}`} onClick={() => { setEditing(l.id); setForm({ name: l.name, title: l.title, bio: l.bio || '', order: l.order, active: l.active }); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="px-2.5 py-1.5 rounded-lg bg-bg-alt text-text-2 text-xs"><Icon name="edit" /></button>
+                    <button aria-label={`Edit ${l.name}`} onClick={() => { setEditing(l.id); setEditPhoto(l.photo_url); setRemovePhoto(false); setPhoto(null); setForm({ name: l.name, title: l.title, bio: l.bio || '', greeting: l.greeting || '', order: l.order, active: l.active }); window.scrollTo({ top: 0, behavior: 'smooth' }) }} className="px-2.5 py-1.5 rounded-lg bg-bg-alt text-text-2 text-xs"><Icon name="edit" /></button>
                     <button aria-label={`Delete ${l.name}`} onClick={() => confirm(`Delete "${l.name}"?`) && leadershipApi.remove(l.id).then(load)} className="px-2.5 py-1.5 rounded-lg border border-accent-red text-accent-red text-xs"><Icon name="trash" /></button></div></td>
                 </tr>
               ))}

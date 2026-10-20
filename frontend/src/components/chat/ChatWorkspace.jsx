@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '../../hooks/useChat'
+import { useNotifications } from '../../context/NotificationContext'
 import ChatWindow from '../ChatWindow'
 import ChatIcon from './ChatIcon'
 import AttachmentViewer from './AttachmentViewer'
@@ -16,6 +17,19 @@ import { listTime } from './fileUtils'
 export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceholder = 'Search conversations…' }) {
   const chat = useChat()
   const { current } = chat
+  const { setActiveChat } = useNotifications()
+  // Layout follows the WORKSPACE's width (the sidebar eats screen width), not the window's:
+  //   < 720px single pane · 720–1060 list + chat (info = drawer) · ≥ 1060 list + chat + info
+  const wrapRef = useRef(null)
+  const [w, setW] = useState(1200)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(([e]) => setW(Math.round(e.contentRect.width)))
+    ro.observe(el); setW(Math.round(el.getBoundingClientRect().width))
+    return () => ro.disconnect()
+  }, [])
+  const mode = w < 720 ? 'single' : w < 1060 ? 'double' : 'triple'
   const [data, setData] = useState({ items: [], teamPreview: '', teamTime: null })
   const [search, setSearch] = useState('')
   const [msgSearch, setMsgSearch] = useState('')
@@ -39,6 +53,7 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
     return data.items.filter((c) => !q || c.name.toLowerCase().includes(q))
   }, [data.items, search])
 
+  useEffect(() => { setActiveChat(current ? { id: current.id, role: current.role } : null); return () => setActiveChat(null) }, [current, setActiveChat])
   const select = (c) => { setMsgSearch(''); setMsgSearchOpen(false); setInfoOpen(false); chat.selectContact(c) }
   const open = (att, list) => {
     const arr = (list || [att]).filter((x) => x.url || !x.pending)
@@ -48,9 +63,9 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
   const scope = current && (current.role === 'broadcast' ? { id: 0, role: 'broadcast' } : { id: current.id, role: current.role })
 
   return (
-    <div className="flex h-[calc(100vh-140px)] min-h-[520px] border border-border rounded-card overflow-hidden bg-bg-card relative">
+    <div ref={wrapRef} className="flex h-[calc(100dvh-150px)] min-h-[480px] border border-border rounded-card overflow-hidden bg-bg-card relative">
       {/* conversation list */}
-      <div className={`${current ? 'hidden md:flex' : 'flex'} w-full md:w-[300px] border-r border-border flex-col flex-shrink-0 bg-bg-alt min-h-0`}>
+      <div className={`${current && mode === 'single' ? 'hidden' : 'flex'} ${mode === 'single' ? 'w-full' : mode === 'double' ? 'w-[250px]' : 'w-[300px]'} border-r border-border flex-col flex-shrink-0 bg-bg-alt min-h-0 ${mode === 'single' ? 'animate-paneIn' : ''}`}>
         <div className="p-2.5 border-b border-border bg-bg-card flex gap-2">
           <div className="relative flex-1">
             <ChatIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-text-3" />
@@ -84,7 +99,7 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
       </div>
 
       {/* active conversation */}
-      <div className={`${current ? 'flex' : 'hidden md:flex'} flex-1 min-w-0 min-h-0`}>
+      <div className={`${!current && mode === 'single' ? 'hidden' : 'flex'} flex-1 min-w-0 min-h-0 ${mode === 'single' ? 'animate-paneIn' : ''}`}>
         <ChatWindow
           myId={myId} myRole={myRole} current={enriched} messages={chat.messages} pending={chat.pending}
           onSend={chat.send} onRetry={chat.retry} onDiscard={chat.discard}
@@ -92,14 +107,14 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
           onOpenAttachment={open} clearedBefore={cleared[key]} search={msgSearch} setSearch={setMsgSearch}
           searchOpen={msgSearchOpen} setSearchOpen={setMsgSearchOpen}
         />
-        {current && infoOpen && window.innerWidth >= 1280 && (
+        {current && infoOpen && mode === 'triple' && (
           <ConversationInfo current={enriched} onClose={() => setInfoOpen(false)} onOpenFile={open}
             onViewAll={() => setFilesOpen('conversation')} onSearch={() => setMsgSearchOpen(true)}
             onClear={() => setCleared((c) => ({ ...c, [key]: chat.messages.at(-1)?.id || 0 }))}
             onCloseConversation={() => { setInfoOpen(false); chat.closeConversation() }} />
         )}
       </div>
-      {current && infoOpen && window.innerWidth < 1280 && (
+      {current && infoOpen && mode !== 'triple' && (
         <ConversationInfo drawer current={enriched} onClose={() => setInfoOpen(false)} onOpenFile={(a, l) => { setInfoOpen(false); open(a, l) }}
           onViewAll={() => { setInfoOpen(false); setFilesOpen('conversation') }} onSearch={() => { setInfoOpen(false); setMsgSearchOpen(true) }}
           onClear={() => { setCleared((c) => ({ ...c, [key]: chat.messages.at(-1)?.id || 0 })); setInfoOpen(false) }}

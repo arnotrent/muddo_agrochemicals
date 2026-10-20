@@ -35,6 +35,21 @@ export const leadershipApi = {
   remove: (id) => api.delete(`/leadership/${id}/`),
 }
 
+// ── Testimonials ─────────────────────────────────────────────────
+export const testimonialsApi = {
+  list: () => api.get('/testimonials/'),
+  submit: (fd) => api.post('/testimonials/submit/', fd),
+  adminList: (params) => api.get('/admin/testimonials/', { params }),
+  adminCreate: (fd) => api.post('/admin/testimonials/', fd),
+  adminUpdate: (id, fd) => api.patch(`/admin/testimonials/${id}/`, fd),
+  adminDelete: (id) => api.delete(`/admin/testimonials/${id}/`),
+}
+
+// ── Notifications ────────────────────────────────────────────────
+export const notificationsApi = {
+  summary: (params) => api.get('/notifications/summary/', { params }),
+}
+
 // ── Distributors ─────────────────────────────────────────────────
 export const distributorsApi = {
   list: (params) => api.get('/distributors/', { params }),
@@ -84,6 +99,7 @@ export const messagingApi = {
   markRead: (data) => api.post('/messages/mark-read/', data),
   files: (params) => api.get('/messages/files/', { params }),
   link: (id) => api.get(`/messages/attachments/${id}/link/`),
+  diagnostics: () => api.get('/admin/diagnostics/chat/'),
   adminContacts: () => api.get('/admin/chat/contacts/'),
   agentContacts: () => api.get('/agent/chat/contacts/'),
 }

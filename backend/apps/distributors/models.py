@@ -11,9 +11,12 @@ class Distributor(models.Model):
 
     country  = models.CharField(max_length=100, choices=COUNTRIES, default='Uganda')
     name     = models.CharField(max_length=200)
-    region   = models.CharField(max_length=100)
-    district = models.CharField(max_length=100)
+    region   = models.CharField(max_length=100)          # region / state / province
+    district = models.CharField(max_length=100)          # district / county / city
+    town     = models.CharField(max_length=120, blank=True)   # city / town / trading centre (optional)
     address  = models.CharField(max_length=300, blank=True)
+    # Optional "how to find us" text: landmarks, floor, nearby buildings, opening notes…
+    location_details = models.TextField(blank=True, max_length=1000)
     phone    = models.CharField(max_length=30, blank=True)
     email    = models.EmailField(blank=True)
     lat      = models.FloatField(default=0.0)

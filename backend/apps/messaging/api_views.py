@@ -1,3 +1,4 @@
+import logging
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import Q
@@ -10,7 +11,7 @@ from rest_framework.decorators import (
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError, APIException
 
 from apps.core.permissions import IsAdminOrAgent, IsAdmin, IsAgent
 from apps.core.throttles import ChatSendThrottle
@@ -22,6 +23,8 @@ from apps.messaging.file_validation import (
 from apps.messaging.serializers import (
     MessageSerializer, serialize_attachment, token_is_valid, attachment_url, display_name,
 )
+
+logger = logging.getLogger('django.request')
 
 TYPE_GROUPS = {
     'images': ['image'], 'documents': ['document', 'presentation'],
@@ -144,6 +147,22 @@ def _validate_recipient(my_id, my_role, to_id, to_role):
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def messages_send_view(request):
     """POST multipart or JSON. Files: field `attachments` (repeatable, up to 10)."""
+    try:
+        return _send_message(request)
+    except (APIException, Http404):
+        raise  # validation / permission errors keep their proper 4xx responses
+    except Exception:
+        # Never leak internals to the client, but ALWAYS leave a full traceback in the server log
+        # and give the sender an actionable, specific message instead of a generic one.
+        logger.exception('Chat send failed (user=%s)', getattr(request.user, 'pk', None))
+        return Response(
+            {'detail': 'The server could not save your message (code chat_send_failed). '
+                       'Please try again; if it keeps happening, tell the administrator.',
+             'code': 'chat_send_failed'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _send_message(request):
     _bump(request.user)
     my_id, my_role = _id(request.user)
     data = request.data
@@ -401,3 +420,12 @@ def agent_chat_contacts_view(request):
         'last_team_preview': _preview_for(last_team),
         'last_team_time': last_team.created_at.isoformat() if last_team else None,
     })
+
+
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def chat_diagnostics_view(request):
+    """GET /api/v1/admin/diagnostics/chat/ — self-test of everything chat needs (admin only)."""
+    from apps.messaging.diagnostics import run_checks
+    checks = run_checks()
+    return Response({'ok': all(c['ok'] or c.get('level') == 'warn' for c in checks), 'checks': checks})

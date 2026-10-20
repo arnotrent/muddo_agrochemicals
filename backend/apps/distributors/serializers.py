@@ -26,7 +26,8 @@ def within_country(country, lat, lng):
 class DistributorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Distributor
-        fields = ['id', 'name', 'country', 'region', 'district', 'address', 'phone', 'email', 'lat', 'lng', 'created_at']
+        fields = ['id', 'name', 'country', 'region', 'district', 'town', 'address', 'location_details',
+                  'phone', 'email', 'lat', 'lng', 'created_at']
         read_only_fields = ['id', 'created_at']
 
     def validate(self, attrs):
@@ -37,6 +38,8 @@ class DistributorSerializer(serializers.ModelSerializer):
         if (lat, lng) == (0.0, 0.0):
             raise serializers.ValidationError(
                 {'lat': 'Please pick the outlet\u2019s exact spot on the map before saving.'})
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            raise serializers.ValidationError({'lat': 'Those coordinates are not valid.'})
         if not within_country(country, lat, lng):
             raise serializers.ValidationError(
                 {'lat': f'That map pin doesn\u2019t fall inside {country} \u2014 it looks like it\u2019s over '

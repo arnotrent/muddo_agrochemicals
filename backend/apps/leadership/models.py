@@ -6,6 +6,7 @@ class Leader(models.Model):
     name = models.CharField(max_length=120)
     title = models.CharField(max_length=120)
     bio = models.TextField(blank=True, max_length=800)
+    greeting = models.TextField(blank=True, max_length=1500)  # their personal welcome / message to visitors
     photo = models.ImageField(upload_to='leadership/', blank=True, null=True)
     order = models.PositiveIntegerField(default=0)
     active = models.BooleanField(default=True)

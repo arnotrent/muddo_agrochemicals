@@ -1,5 +1,6 @@
 from django.urls import path
 from apps.core import api_views as v
+from apps.core.notifications import notifications_summary_view
 
 urlpatterns = [
     path('contact/', v.ContactCreateView.as_view(), name='api_contact_create'),
@@ -9,6 +10,7 @@ urlpatterns = [
     path('site-settings/', v.SiteSettingsView.as_view(), name='api_site_settings'),
     path('search/', v.global_search_view, name='api_global_search'),
     path('me/staff-profile/', v.MyStaffProfileView.as_view(), name='api_my_staff_profile'),
+    path('notifications/summary/', notifications_summary_view, name='api_notifications_summary'),
 
     # admin-only
     path('admin/contact-requests/', v.AdminContactListView.as_view(), name='api_admin_contact_list'),

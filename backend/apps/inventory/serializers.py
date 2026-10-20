@@ -5,12 +5,13 @@ from apps.inventory.models import Inventory, InventoryLog
 class InventorySerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_category = serializers.CharField(source='product.category', read_only=True)
+    product_is_featured = serializers.BooleanField(source='product.is_featured', read_only=True)
     is_low = serializers.ReadOnlyField()
     status = serializers.ReadOnlyField()
 
     class Meta:
         model = Inventory
-        fields = ['id', 'product', 'product_name', 'product_category', 'stock_qty',
+        fields = ['id', 'product', 'product_name', 'product_category', 'product_is_featured', 'stock_qty',
                   'reorder_level', 'unit', 'last_updated', 'is_low', 'status']
         read_only_fields = ['id', 'last_updated']
 

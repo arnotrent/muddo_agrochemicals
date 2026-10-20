@@ -9,9 +9,12 @@ class Inventory(models.Model):
     class Meta: verbose_name_plural='Inventories'
     def __str__(self): return f"{self.product.name} — {self.stock_qty}"
     @property
-    def is_low(self): return self.stock_qty<=self.reorder_level
+    def is_low(self):
+        # A featured / "coming soon" product is simply not released yet — zero stock is expected, not an alert.
+        return (not self.product.is_featured) and self.stock_qty<=self.reorder_level
     @property
     def status(self):
+        if self.product.is_featured: return 'featured'
         if self.stock_qty==0: return 'out'
         if self.is_low: return 'low'
         return 'in'

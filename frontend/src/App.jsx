@@ -20,11 +20,13 @@ const AboutPage = lazy(() => import('./pages/public/AboutPage'))
 const TrackPage = lazy(() => import('./pages/public/TrackPage'))
 const SearchPage = lazy(() => import('./pages/public/SearchPage'))
 const ComparePage = lazy(() => import('./pages/public/ComparePage'))
+const ReviewsPage = lazy(() => import('./pages/public/ReviewsPage'))
 const LoginPage = lazy(() => import('./pages/public/LoginPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/public/ResetPasswordPage'))
 
 const AgentDashboardPage = lazy(() => import('./pages/portal/AgentDashboardPage'))
+const AgentEnquiriesPage = lazy(() => import('./pages/portal/AgentEnquiriesPage'))
 const AgentChatPage = lazy(() => import('./pages/portal/AgentChatPage'))
 const AgentProfilePage = lazy(() => import('./pages/portal/AgentProfilePage'))
 
@@ -76,6 +78,7 @@ export default function App() {
                 <Route path="/track" element={<TrackPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/compare" element={<ComparePage />} />
+                <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
 
@@ -83,6 +86,7 @@ export default function App() {
               <Route element={<RequireRole role="agent" />}>
                 <Route element={<PortalLayout />}>
                   <Route path="/portal" element={<AgentDashboardPage />} />
+                  <Route path="/portal/enquiries" element={<AgentEnquiriesPage />} />
                   <Route path="/portal/chat" element={<AgentChatPage />} />
                   <Route path="/portal/profile" element={<AgentProfilePage />} />
                 </Route>

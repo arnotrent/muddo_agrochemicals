@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import ChatIcon from './chat/ChatIcon'
+import Avatar from './Avatar'
 import Composer from './chat/Composer'
 import MessageAttachments from './chat/MessageAttachments'
 import { formatDate, formatTime } from './chat/fileUtils'
 
+// Delivery ticks, WhatsApp-style:  ✓ grey = sent · ✓✓ grey = delivered to their device · ✓✓ BLUE = read.
+const BLUE = '#2563EB'
 function Ticks({ status }) {
-  if (status === 'read') return <span title="Read" aria-label="Read" className="text-accent-green inline-flex"><ChatIcon name="checks" size="0.95em" /></span>
-  if (status === 'delivered') return <span title="Delivered" aria-label="Delivered" className="opacity-80 inline-flex"><ChatIcon name="checks" size="0.95em" /></span>
-  return <span title="Sent" aria-label="Sent" className="opacity-80 inline-flex"><ChatIcon name="check" size="0.95em" /></span>
+  if (status === 'read') return <span title="Read" aria-label="Read" className="inline-flex" style={{ color: BLUE }}><ChatIcon name="checks" size="1.05em" /></span>
+  if (status === 'delivered') return <span title="Delivered" aria-label="Delivered" className="inline-flex text-text-3"><ChatIcon name="checks" size="1.05em" /></span>
+  return <span title="Sent" aria-label="Sent" className="inline-flex text-text-3"><ChatIcon name="check" size="1.05em" /></span>
 }
 
 /** Centre pane: header, messages, drag-and-drop, composer. */
@@ -16,6 +19,7 @@ export default function ChatWindow({
   onOpenAttachment, clearedBefore, search, setSearch, searchOpen, setSearchOpen,
 }) {
   const [replyTo, setReplyTo] = useState(null)
+  const [focusKey, setFocusKey] = useState(0)
   const [dragging, setDragging] = useState(false)
   const [dropped, setDropped] = useState(null)
   const scrollRef = useRef(null)
@@ -27,7 +31,7 @@ export default function ChatWindow({
     return messages.filter((m) => m.id > (clearedBefore || 0) && (!q || (m.content || '').toLowerCase().includes(q) || m.attachments?.some((a) => a.name.toLowerCase().includes(q))))
   }, [messages, search, clearedBefore])
 
-  useEffect(() => { // keep pinned to the bottom unless the user scrolled up to read history
+  useEffect(() => {
     const el = scrollRef.current
     if (el && stick.current) el.scrollTo({ top: el.scrollHeight })
   }, [visible.length, pending.length, pending.map((p) => p.state + p.progress).join()]) // eslint-disable-line
@@ -44,6 +48,7 @@ export default function ChatWindow({
     )
   }
 
+  const startReply = (m) => { setReplyTo({ id: m.id, name: m.sender_name, preview: m.content || m.attachments?.[0]?.name }); setFocusKey((k) => k + 1) }
   const onScroll = () => { const el = scrollRef.current; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120 }
   const dragProps = {
     onDragEnter: (e) => { if (e.dataTransfer?.types?.includes('Files')) { e.preventDefault(); dragDepth.current++; setDragging(true) } },
@@ -63,38 +68,35 @@ export default function ChatWindow({
       <div key={m.id || m.localId} className="contents">
         {sep}
         <div className={`flex gap-2 mb-1.5 group animate-msgIn ${mine ? 'flex-row-reverse' : ''}`}>
-          {!mine && (
-            <div className="w-7 h-7 rounded-full bg-bg-deep text-white flex items-center justify-center text-[0.65rem] font-bold flex-shrink-0 overflow-hidden self-end">
-              {m.sender_avatar_url ? <img src={m.sender_avatar_url} alt="" className="w-full h-full object-cover" /> : (m.sender_name || '?')[0]?.toUpperCase()}
-            </div>
-          )}
+          {!mine && <Avatar src={m.sender_avatar_url} name={m.sender_name} className="w-7 h-7 self-end" textClass="text-[0.65rem]" alt="" />}
+          {/* my bubbles are a light blue tint so the grey / blue read-ticks stay visible on them */}
           <div className={`max-w-[78%] sm:max-w-[64%] px-3.5 py-2.5 rounded-2xl text-sm shadow-sm break-words ${
             failed ? 'bg-accent-red/10 border border-accent-red text-text-1 rounded-br-md'
-              : mine ? 'bg-accent-blue text-white rounded-br-md' : 'bg-bg-card border border-border text-text-1 rounded-bl-md'}`}>
+              : mine ? 'bg-accent-blue/20 border border-accent-blue/30 text-text-1 rounded-br-md' : 'bg-bg-card border border-border text-text-1 rounded-bl-md'}`}>
             {!mine && (current.role === 'broadcast' || m.sender_role === 'admin') && <div className="text-[0.7rem] font-bold text-accent-blue mb-0.5">{m.sender_name}{m.sender_role === 'admin' ? ' · Admin' : ''}</div>}
             {m.reply_to_detail && (
-              <div className={`border-l-[3px] border-accent-blue rounded-md px-2.5 py-1.5 mb-1.5 text-xs ${mine ? 'bg-white/15' : 'bg-bg-alt'}`}>
+              <div className="border-l-[3px] border-accent-blue rounded-md px-2.5 py-1.5 mb-1.5 text-xs bg-bg-alt/80">
                 <strong className="block text-[0.7rem]">{m.reply_to_detail.sender_name}</strong><span className="line-clamp-2">{m.reply_to_detail.content}</span>
               </div>
             )}
-            <MessageAttachments attachments={m.attachments} mine={mine && !failed} onOpen={(a) => onOpenAttachment(a, m.attachments.filter((x) => !x.pending))} />
+            <MessageAttachments attachments={m.attachments} mine={false} onOpen={(a) => onOpenAttachment(a, m.attachments.filter((x) => !x.pending))} />
             {m.content && <div className="whitespace-pre-wrap">{m.content}</div>}
             {sending && m.files.length > 0 && (
-              <div className="mt-2"><div className="h-1 rounded-full bg-white/30 overflow-hidden"><div className="h-full bg-white transition-[width] duration-200" style={{ width: `${m.progress}%` }} /></div><div className="text-[0.66rem] mt-0.5 opacity-90">Uploading… {m.progress}%</div></div>
+              <div className="mt-2"><div className="h-1 rounded-full bg-bg-alt overflow-hidden"><div className="h-full bg-accent-blue transition-[width] duration-200" style={{ width: `${m.progress}%` }} /></div><div className="text-[0.66rem] mt-0.5 text-text-3">Uploading… {m.progress}%</div></div>
             )}
             {failed && (
               <div className="mt-2 flex items-center gap-2 text-xs text-accent-red"><ChatIcon name="alert" />{m.error}
                 <button onClick={() => onRetry(m.localId)} className="ml-auto font-bold underline flex items-center gap-1"><ChatIcon name="retry" />Retry</button>
                 <button onClick={() => onDiscard(m.localId)} className="font-bold underline">Remove</button></div>
             )}
-            <div className="text-[0.64rem] mt-1 text-right flex justify-end items-center gap-1 opacity-80">
+            <div className="text-[0.64rem] mt-1 text-right flex justify-end items-center gap-1 text-text-3">
               {formatTime(m.created_at)}
-              {mine && !failed && (sending ? <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" aria-label="Sending" /> : isPending ? <ChatIcon name="check" size="0.95em" /> : current.role !== 'broadcast' && <Ticks status={m.status} />)}
+              {mine && !failed && (sending ? <span className="inline-block w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" aria-label="Sending" /> : isPending ? <Ticks status="sent" /> : current.role !== 'broadcast' && <Ticks status={m.status} />)}
             </div>
           </div>
           {!isPending && (
-            <button onClick={() => setReplyTo({ id: m.id, name: m.sender_name, preview: m.content || m.attachments?.[0]?.name })} aria-label="Reply to this message"
-              className="opacity-0 group-hover:opacity-100 focus:opacity-100 self-center w-7 h-7 rounded-full border border-border bg-bg-card text-text-3 flex items-center justify-center flex-shrink-0"><ChatIcon name="reply" size="0.85em" /></button>
+            <button onClick={() => startReply(m)} aria-label="Reply to this message"
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 max-sm:opacity-60 self-center w-7 h-7 rounded-full border border-border bg-bg-card text-text-3 flex items-center justify-center flex-shrink-0"><ChatIcon name="reply" size="0.85em" /></button>
           )}
         </div>
       </div>
@@ -105,8 +107,10 @@ export default function ChatWindow({
     <div className="flex-1 flex flex-col min-h-0 min-w-0 relative" {...dragProps}>
       <div className="p-3 border-b border-border flex items-center gap-3 bg-bg-card flex-shrink-0">
         <button onClick={onBack} aria-label="Back to conversations" className="md:hidden w-9 h-9 rounded-full hover:bg-bg-alt text-text-2 flex items-center justify-center"><ChatIcon name="left" size="1.2rem" /></button>
-        <div className="w-10 h-10 rounded-full bg-accent-blue text-white flex items-center justify-center font-bold overflow-hidden flex-shrink-0 relative">
-          {current.avatar_url ? <img src={current.avatar_url} alt="" className="w-full h-full object-cover" /> : (current.role === 'broadcast' ? <ChatIcon name="users" /> : current.name?.[0]?.toUpperCase())}
+        <div className="relative flex-shrink-0">
+          {current.role === 'broadcast'
+            ? <div className="w-10 h-10 rounded-full bg-bg-deep text-white flex items-center justify-center"><ChatIcon name="users" /></div>
+            : <Avatar src={current.avatar_url} name={current.name} className="w-10 h-10" alt="" />}
           {current.role !== 'broadcast' && <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-bg-card ${current.is_online ? 'bg-accent-green' : 'bg-text-4'}`} />}
         </div>
         <div className="min-w-0 flex-1">
@@ -137,7 +141,7 @@ export default function ChatWindow({
           <ChatIcon name="download" size="2.5rem" className="text-accent-blue mb-2" /><div className="font-bold text-accent-blue">Drop files here to attach</div>
         </div>
       )}
-      <Composer onSend={onSend} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} externalFiles={dropped} onExternalConsumed={() => setDropped(null)} />
+      <Composer onSend={onSend} replyTo={replyTo} onCancelReply={() => setReplyTo(null)} externalFiles={dropped} onExternalConsumed={() => setDropped(null)} focusKey={focusKey} />
     </div>
   )
 }

@@ -27,7 +27,7 @@ function Chip({ file, onRemove, progress, state }) {
   )
 }
 
-export default function Composer({ onSend, disabled, replyTo, onCancelReply, externalFiles, onExternalConsumed }) {
+export default function Composer({ onSend, disabled, replyTo, onCancelReply, externalFiles, onExternalConsumed, focusKey }) {
   const [text, setText] = useState('')
   const [files, setFiles] = useState([])
   const [error, setError] = useState('')
@@ -66,6 +66,13 @@ export default function Composer({ onSend, disabled, replyTo, onCancelReply, ext
     const t = taRef.current
     if (t) { t.style.height = '44px'; t.style.height = `${Math.min(Math.max(t.scrollHeight, 44), 140)}px` }
   }, [text, narrow])
+
+  // Clicking "reply" on a message opens the box: focus it so the user can type straight away (also raises the phone keyboard).
+  useEffect(() => {
+    if (!focusKey) return
+    const t = taRef.current
+    if (t) { t.focus({ preventScroll: false }); t.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }); const n = t.value.length; t.setSelectionRange(n, n) }
+  }, [focusKey])
 
   // Insert at the caret (or replace the selection), then put the caret right after the emoji.
   const insertEmoji = (emoji) => {

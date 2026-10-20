@@ -6,7 +6,6 @@ import faqGroups from '../../data/faqs'
 import Icon from '../../components/Icon'
 import { PhoneLinks, EmailLinks } from '../../components/ContactDetails'
 import LeadershipSection from '../../components/LeadershipSection'
-import ImageGallery from '../../components/ImageGallery'
 
 const CATEGORY_META = [
   ['pesticide', 'bug', 'Pesticides'],
@@ -14,6 +13,16 @@ const CATEGORY_META = [
   ['fungicide', 'microscope', 'Fungicides'],
   ['other', 'boxes', 'Others & Equipment'],
 ]
+
+// Longer, friendlier copy lives HERE (About page) only — other pages keep their short headlines.
+const DISTRIBUTE_PARAGRAPHS = [
+  'Every farm tells a different story, and every story has its own challenges — a sudden attack of armyworms in the maize, a stubborn blanket of couch grass before planting, or damp weather that invites blight onto the tomatoes. Below, you will find the products we keep on our shelves, grouped by the problem they solve: pesticides for the insects that eat your harvest, herbicides for the weeds that steal its water and light, and fungicides for the diseases that spread when the rains come.',
+  'Each card shows the product exactly as it reaches our shop. Tap any of them and you will find what it is made of, which crops it is meant for, how much to mix into a standard knapsack sprayer, the pack sizes we sell, and step-by-step directions written for the way most Ugandan growers actually spray. We keep the wording simple on purpose, so that a farmer in the field and a dealer behind the counter read the same instructions.',
+  'Everything we distribute is registered with the Ministry of Agriculture, Animal Industry and Fisheries (MAAIF), and we buy for the shelf — not for the brochure — so what you see here is what we really stock. A few items are marked “Coming Soon”: these are products we are finalising for stock, listed early so you know what is on the way and can ask us to notify you the moment they arrive. And in the “Others & Equipment” group you will find the tools that make the chemicals work properly, such as knapsack sprayers.',
+  'Not sure which one fits your garden, orchard or field? You do not need to guess. Tell us your crop, the pest, weed or disease you are fighting, and roughly how much land you are working, and our team will point you to the right product, the right dose and the right timing — free of charge. Browse below, compare what interests you, and when you are ready, call, WhatsApp or send us an enquiry: we buy and sell in small retail quantities as well as wholesale.',
+]
+const LEADERSHIP_INTRO = 'Behind every bottle on our shelves is a team that answers the phone, remembers your crop and takes responsibility for what we sell. These are the people who guide Muddo Agro Chemicals LTD — meet them, read their words, and get in touch whenever you like.'
+const FAQ_INTRO = 'We hear the same sensible questions from farmers, agro-dealers and first-time buyers, so we have gathered the answers here — from where to find us and whether a product is genuine, to wholesale prices, delivery upcountry and what to do if something is not right. If your question is not covered, call or write to us and we will gladly help.'
 
 export default function AboutPage() {
   const [openFaq, setOpenFaq] = useState(null)
@@ -69,7 +78,7 @@ export default function AboutPage() {
             <p className="leading-relaxed text-text-2">
               <Icon name="building" className="text-accent-blue mr-1.5" /><strong>P.O. Box:</strong> {site.company_po_box}<br />
               <Icon name="phone" className="text-accent-blue mr-1.5" /><strong>Tel:</strong> <PhoneLinks inline /><br />
-              <Icon name="envelope" className="text-accent-blue mr-1.5" /><strong>Email:</strong> <EmailLinks inline className="text-accent-blue" />
+              <Icon name="envelope" className="text-accent-blue mr-1.5" /><strong>Email:</strong> <EmailLinks inline />
             </p>
           </div>
           <div className="rounded-2xl overflow-hidden shadow-lg">
@@ -78,15 +87,20 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <LeadershipSection />
+      <LeadershipSection intro={LEADERSHIP_INTRO} />
 
       <section className="py-14 bg-bg-alt">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <div className="text-center mb-10">
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3">
-              <Icon name="flask" />Our Products
-            </div>
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3"><Icon name="flask" />Our Products</div>
             <h2 className="text-3xl font-bold text-text-1">What We Distribute</h2>
+          </div>
+          <div className="max-w-[820px] mx-auto mb-12 space-y-4 text-text-2 leading-relaxed">
+            {DISTRIBUTE_PARAGRAPHS.map((p) => <p key={p.slice(0, 24)}>{p}</p>)}
+            <div className="flex gap-2.5 flex-wrap pt-2">
+              <Link to="/contact?subject=Product+Enquiry" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm"><Icon name="envelope" />Ask about a product</Link>
+              <Link to="/compare" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-btn border border-border text-text-2 font-bold text-sm"><Icon name="balance-scale" />Compare products</Link>
+            </div>
           </div>
           {groups.map((g) => (
             <div key={g.cat} className="mb-13">
@@ -109,16 +123,12 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* extra photography that no other page uses yet — added, nothing replaced */}
-      <ImageGallery pool="product" title="Genuine MACL products" subtitle="The real packs, as you will find them on our shelves." />
-      <ImageGallery pool="misc" part={0} of={2} title="Life at MACL" subtitle="Our shop, our team and the farms we serve." className="bg-bg-alt" />
-
       <section className="py-14">
         <div className="max-w-[860px] mx-auto px-4 sm:px-6">
           <div className="text-center mb-9">
             <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3"><Icon name="question-circle" />FAQ</div>
             <h2 className="text-3xl font-bold text-text-1">Frequently Asked Questions</h2>
-            <p className="text-text-3 max-w-[56ch] mx-auto mt-2.5">Answers to what farmers and distributors ask us most.</p>
+            <p className="text-text-2 max-w-[66ch] mx-auto mt-3 leading-relaxed">{FAQ_INTRO}</p>
           </div>
           <div className="flex gap-2 flex-wrap justify-center mb-8">
             {faqGroups.map((g) => (

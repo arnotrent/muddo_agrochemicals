@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { coreApi } from '../../api/services'
 import PageHero from '../../components/PageHero'
-import ImageGallery from '../../components/ImageGallery'
-import { PhoneLinks } from '../../components/ContactDetails'
+import { PhoneLinks, EmailLink, uniqueEmails } from '../../components/ContactDetails'
 import Icon from '../../components/Icon'
 import site from '../../data/siteConfig'
 import manifest from '../../data/imageManifest.json'
@@ -131,7 +130,7 @@ export default function TrackPage() {
 
                 <div className="flex gap-2.5 flex-wrap">
                   <a href={`https://wa.me/${site.whatsapp_number}?text=${msg}`} target="_blank" rel="noreferrer" className="px-4 py-2.5 rounded-btn bg-accent-green text-bg-deep font-bold text-sm inline-flex items-center gap-2"><Icon name="whatsapp" />WhatsApp about this enquiry</a>
-                  <a href={`mailto:${site.emails[0]}?subject=${encodeURIComponent('Enquiry ' + result.ref_number)}`} className="px-4 py-2.5 rounded-btn bg-bg-alt text-text-2 font-bold text-sm inline-flex items-center gap-2"><Icon name="envelope" />E-mail us</a>
+                  <span className="px-4 py-2.5 rounded-btn bg-bg-alt text-text-2 font-bold text-sm inline-flex items-center gap-2"><Icon name="envelope" /><EmailLink email={uniqueEmails()[0]} subject={`Enquiry ${result.ref_number}`} /></span>
                   <Link to="/contact" className="px-4 py-2.5 rounded-btn border border-border text-text-2 font-bold text-sm inline-flex items-center gap-2"><Icon name="plus-circle" />New enquiry</Link>
                 </div>
               </div>
@@ -177,7 +176,6 @@ export default function TrackPage() {
           <div className="text-center mt-8"><Link to="/contact" className="text-sm text-accent-blue">&larr; Submit a new enquiry</Link></div>
         </div>
       </section>
-      <ImageGallery pool="misc" part={1} of={2} exclude={hero.file} title="Genuine products, real fields" subtitle="Photographs from MACL's own range and the crops it protects." max={6} />
     </>
   )
 }

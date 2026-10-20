@@ -24,6 +24,7 @@ export const reviewsApi = {
   submit: (productId, data) => api.post(`/products/${productId}/reviews/`, data),
   adminList: (params) => api.get('/admin/reviews/', { params }),
   adminSetStatus: (id, status) => api.patch(`/admin/reviews/${id}/`, { status }),
+  adminUpdate: (id, data) => api.patch(`/admin/reviews/${id}/`, data),
   adminDelete: (id) => api.delete(`/admin/reviews/${id}/`),
 }
 
@@ -76,7 +77,7 @@ export const agentsApi = {
   me: () => api.get('/agents/me/'),
   updateMe: (formData) => api.patch('/agents/me/', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   status: () => api.get('/agents/status/'),
-  adminList: () => api.get('/admin/agents/'),
+  adminList: () => api.get('/admin/agents/', { params: { page_size: 300 } }),
   adminCreate: (data) => api.post('/admin/agents/', data),
   adminDelete: (id) => api.delete(`/admin/agents/${id}/`),
   adminToggle: (id) => api.post(`/admin/agents/${id}/toggle/`),

@@ -8,6 +8,7 @@ import { NotificationBell, ToastStack } from '../components/NotificationCenter'
 
 const links = [
   { to: '/portal', end: true, icon: 'tachometer-alt', label: 'Dashboard' },
+  { to: '/portal/enquiries', icon: 'envelope', label: 'Enquiries', badge: 'enquiries' },
   { to: '/portal/chat', icon: 'comments', label: 'Messages', badge: 'messages' },
   { to: '/portal/profile', icon: 'user', label: 'My Profile' },
 ]
@@ -35,7 +36,7 @@ function Shell() {
                 className={({ isActive }) => `flex items-center gap-2.5 px-3 py-2.5 mx-2 my-0.5 rounded-lg text-sm font-medium transition-colors ${isActive ? 'bg-accent-blue text-bg-deep font-bold shadow-glow-blue' : 'text-white/65 hover:bg-white/10 hover:text-white'}`}>
                 <Icon name={l.icon} className="w-5 text-center" />
                 <span className="flex-1">{l.label}</span>
-                {n > 0 && <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-accent-red text-white text-[0.66rem] font-bold flex items-center justify-center" aria-label={`${n} unread`}>{n > 99 ? '99+' : n}</span>}
+                {n > 0 && <span className="min-w-[20px] h-5 px-1.5 rounded-full bg-accent-red text-white text-[0.66rem] font-bold flex items-center justify-center" aria-label={`${n} waiting`}>{n > 99 ? '99+' : n}</span>}
               </NavLink>
             )
           })}

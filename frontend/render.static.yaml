@@ -1,10 +1,11 @@
-# Reference for Render STATIC SITES. If your frontend service was created in the dashboard, add the same
-# rule there instead:  Dashboard → your static site → Redirects/Rewrites → Add Rule
-#   Source: /*     Destination: /index.html     Action: Rewrite
+# Render STATIC SITE blueprint. The routes rule below is what makes /products/pesticides, /track, /admin … survive a
+# browser refresh. If your site was created in the dashboard instead: Dashboard → your static site → Redirects/Rewrites →
+# Add Rule:  Source /*   Destination /index.html   Action Rewrite   (this single rule is the guaranteed fix on Render).
 services:
   - type: web
     name: muddo-agrochemicals-site
     runtime: static
+    rootDir: frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     routes:

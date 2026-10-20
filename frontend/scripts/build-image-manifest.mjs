@@ -56,13 +56,16 @@ function size(file) { // PNG / JPEG intrinsic size (no dependencies) so the page
   return [null, null]
 }
 
-const group = (f) => (/^product_/i.test(f) ? 'product' : /^field_/i.test(f) ? 'field' : /^(hero|banner)/i.test(f) ? 'banner' : 'misc')
+// Only MACL's own product photos / boxes go in the gallery; Foliar Boost is NOT a MACL product, so it is never listed.
+const NOT_MACL = /foliar/i
+const BOXY = /(box|carton|pack|bottle|sachet|sprayer|range)/i
+const group = (f) => (/^product_/i.test(f) || BOXY.test(f) ? 'product' : /^field_/i.test(f) ? 'field' : /^(hero|banner)/i.test(f) ? 'banner' : 'misc')
 const caption = (f) => captions[f] || f.replace(extname(f), '').replace(/^(product|field|hero|banner)[_-]/i, '').replace(/[_-]+/g, ' ').replace(/\b(\d{3,4}|v\d+|copy|final)\b/gi, '').replace(/\s+/g, ' ').trim().replace(/\b\w/g, (c) => c.toUpperCase()) || 'MACL photo'
 
 const images = readdirSync(imgDir).filter((f) => IMG.test(f)).sort().filter((f) => {
   if (haystack.includes(f.toLowerCase())) return false          // already used somewhere
   if (!hasBackend && /^product_/i.test(f)) return false          // seed data not visible → assume catalogue uses it
-  if (/^(logo|favicon|products_all)/i.test(f)) return false
+  if (/^(logo|favicon|products_all)/i.test(f) || NOT_MACL.test(f)) return false
   return true
 }).map((f) => { const [w, h] = size(join(imgDir, f)); return { file: f, src: `/images/${encodeURI(f)}`, group: group(f), caption: caption(f), w, h } })
 

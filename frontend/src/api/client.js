@@ -2,8 +2,6 @@ import axios from 'axios'
 
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1'
 
-// Loud, not silent: a deployed build still pointing at localhost means VITE_API_BASE_URL was not
-// set at BUILD time (Vite bakes it in when `npm run build` runs).
 const isLocalHost = ['localhost', '127.0.0.1'].includes(window.location.hostname)
 if (!isLocalHost && API_BASE.includes('127.0.0.1')) {
   // eslint-disable-next-line no-console
@@ -35,20 +33,23 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// ── Cold-start resilience ─────────────────────────────────────────
-// Free hosting puts the API to sleep after ~15 idle minutes; the first request then fails with a
-// network error / 502 / 503 / 504 while it wakes up (up to a minute). Idempotent GETs are retried
-// with backoff, and the UI is told (window event) so it can show "waking up the server…".
 const RETRY_DELAYS = [1500, 3500, 7000, 12000]
 const isWakeError = (error) => !error.response || [502, 503, 504].includes(error.response.status)
 const emit = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-// Single-flight token refresh: if several requests 401 at once, only one refresh call is made.
+// INSTANT UPDATES: any successful change (POST/PATCH/PUT/DELETE) tells the notification system to refresh
+// right now, so badges, counts and unread dots update at once instead of at the next 4-second poll.
+const isMutation = (cfg) => cfg?.method && cfg.method.toLowerCase() !== 'get' && !/\/auth\//.test(cfg.url || '')
+
 let refreshPromise = null
 
 api.interceptors.response.use(
-  (res) => { if (res.config.__retries) emit('api:recovered'); return res },
+  (res) => {
+    if (res.config.__retries) emit('api:recovered')
+    if (isMutation(res.config)) emit('notifications:refresh')
+    return res
+  },
   async (error) => {
     const original = error.config
     if (!original) return Promise.reject(error)

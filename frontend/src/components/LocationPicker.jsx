@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Rectangle, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Rectangle, Polygon, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import { geocode, reverseGeocode } from '../utils/geocode'
 import { detectArea, townOf } from '../utils/geoMatch'
@@ -23,18 +23,71 @@ function Fly({ target }) {
   }, [target, map])
   return null
 }
-function Resize() { const map = useMap(); useEffect(() => { const t = setTimeout(() => map.invalidateSize(), 250); return () => clearTimeout(t) }, [map]); return null }
-// Locks panning to the chosen country so the admin cannot wander (or drop a pin) in another one.
-function Lock({ bounds }) {
+// Keeps Leaflet in step with its container: when the form panel opens, the window or the column resizes,
+// the map re-measures itself and — if no pin is placed yet — re-frames the selected area.
+function AutoSize({ frame }) {
   const map = useMap()
+  const frameRef = useRef(frame)
+  frameRef.current = frame
   useEffect(() => {
-    if (bounds) { map.setMaxBounds(L.latLngBounds(bounds).pad(0.05)); map.options.maxBoundsViscosity = 1 } else map.setMaxBounds(null)
-    return () => map.setMaxBounds(null)
-  }, [bounds, map])
+    const el = map.getContainer()
+    let t
+    const run = () => {
+      map.invalidateSize({ animate: false })
+      const f = frameRef.current
+      if (f) map.fitBounds(f.bounds, { padding: [14, 14], maxZoom: f.maxZoom, animate: false })
+    }
+    const first = setTimeout(run, 250)
+    if (typeof ResizeObserver === 'undefined') return () => clearTimeout(first)
+    const ro = new ResizeObserver(() => { clearTimeout(t); t = setTimeout(run, 160) })
+    ro.observe(el)
+    return () => { clearTimeout(first); clearTimeout(t); ro.disconnect() }
+  }, [map])
   return null
 }
 
+// LOCK: the map cannot be panned out of the selected area (or, with no area yet, the selected country) and cannot be
+// zoomed out further than the view that encloses it. Changing the criteria re-encloses automatically.
+function Lock({ box, countryBounds }) {
+  const map = useMap()
+  useEffect(() => {
+    const target = box ? [[box[0], box[2]], [box[1], box[3]]] : countryBounds
+    if (!target) { map.setMaxBounds(null); map.setMinZoom(2); return undefined }
+    const apply = () => {
+      const b = L.latLngBounds(target)
+      map.invalidateSize({ animate: false })
+      map.setMaxBounds(b.pad(0.02)); map.options.maxBoundsViscosity = 1
+      map.setMinZoom(Math.max(2, map.getBoundsZoom(b, false)))
+    }
+    map.whenReady(apply)
+    return () => { map.setMaxBounds(null); map.setMinZoom(2) }
+  }, [box, countryBounds, map])
+  return null
+}
+
+// Dims everything outside the selected area and outlines it, so the allowed zone is obvious.
+function AreaMask({ box }) {
+  if (!box) return null
+  const hole = [[box[0], box[2]], [box[0], box[3]], [box[1], box[3]], [box[1], box[2]]]
+  const world = [[-85, -180], [-85, 180], [85, 180], [85, -180]]
+  return (
+    <>
+      <Polygon positions={[world, hole]} pathOptions={{ stroke: false, fillColor: '#0F172A', fillOpacity: 0.38 }} interactive={false} />
+      <Rectangle bounds={[[box[0], box[2]], [box[1], box[3]]]} pathOptions={{ color: '#38BDF8', weight: 2.5, dashArray: '6 6', fill: false }} interactive={false} />
+    </>
+  )
+}
+
 const insideBox = (box, lat, lng, m = 0.03) => !box || (lat >= box[0] - m && lat <= box[1] + m && lng >= box[2] - m && lng <= box[3] + m)
+
+// Nominatim boxes for a village can be a few metres wide — give every area a sensible minimum size and breathing room.
+function padBox(b, minSpan = 0.04, ratio = 0.12) {
+  if (!b) return null
+  const [s, n, w, e] = b
+  const la = Math.max(0, minSpan - (n - s)) / 2 + (n - s) * ratio
+  const lo = Math.max(0, minSpan - (e - w)) / 2 + (e - w) * ratio
+  return [s - la, n + la, w - lo, e + lo]
+}
 
 /**
  * Distributor location picker.
@@ -64,6 +117,13 @@ export default function LocationPicker({ lat, lng, onChange, country, region, di
 
   const cb = COUNTRY_BOUNDS[country]
   const countryBounds = useMemo(() => (cb ? toLeaflet(cb) : null), [country]) // eslint-disable-line
+  // The enclosed zone: the selected district/town (padded), widened to include an existing pin so editing an old outlet is never blocked.
+  const lockBox = useMemo(() => {
+    const b = padBox(area?.box)
+    if (!b) return null
+    return has ? [Math.min(b[0], lat), Math.max(b[1], lat), Math.min(b[2], lng), Math.max(b[3], lng)] : b
+  }, [area, has]) // eslint-disable-line
+  const frame = useMemo(() => (!has && lockBox ? { bounds: [[lockBox[0], lockBox[2]], [lockBox[1], lockBox[3]]], maxZoom: town ? 17 : 13 } : null), [lockBox, has, town])
 
   // ── 1. auto-zoom to the described area ─────────────────────────────
   useEffect(() => {
@@ -93,7 +153,7 @@ export default function LocationPicker({ lat, lng, onChange, country, region, di
   }
   const tryPlace = (la, ln, zoom) => {
     if (!inCountry(country, la, ln)) { setMsg({ kind: 'error', text: `That spot is outside ${country}. Pick a place inside ${country}, or change the country above.` }); return false }
-    if (locked && area?.box && !insideBox(area.box, la, ln)) {
+    if (locked && lockBox && !insideBox(lockBox, la, ln, 0)) {
       setMsg({ kind: 'error', text: `That spot is outside ${area.label}. Move the pin inside it, change the district, or untick “Lock pin to the selected area”.` }); return false
     }
     setMsg(null); accept(la, ln, zoom); return true
@@ -195,18 +255,21 @@ export default function LocationPicker({ lat, lng, onChange, country, region, di
         )}
       </div>
 
-      <label className="flex items-center gap-2 text-xs font-semibold text-text-2 mb-2 cursor-pointer">
-        <input type="checkbox" checked={locked} onChange={(e) => { setLocked(e.target.checked); setMsg(null) }} className="w-4 h-4" />
-        Lock pin to the selected {area ? area.label : country} {area ? 'area' : ''}
-      </label>
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+        <label className="flex items-center gap-2 text-xs font-semibold text-text-2 cursor-pointer">
+          <input type="checkbox" checked={locked} onChange={(e) => { setLocked(e.target.checked); setMsg(null) }} className="w-4 h-4" />
+          Lock map &amp; pin to {area ? area.label : country}
+        </label>
+        <button type="button" onClick={() => { const b = lockBox || cb; if (b) setFly({ box: b, zoom: town ? 17 : lockBox ? 14 : 7, k: Date.now() }) }} className="px-2.5 py-1 rounded-md bg-bg-alt text-text-2 text-xs font-bold flex items-center gap-1.5"><Icon name="map-marker-alt" />Re-fit to area</button>
+      </div>
       {msg && <div role="status" className={`mb-2 text-xs flex gap-1.5 items-start ${msg.kind === 'error' ? 'text-accent-red' : 'text-text-3'}`}><Icon name={msg.kind === 'error' ? 'exclamation-circle' : 'info-circle'} className="mt-0.5" />{msg.text}</div>}
 
-      <div className="h-[320px] rounded-xl overflow-hidden border border-border relative z-0">
+      <div className="h-[340px] sm:h-[400px] rounded-xl overflow-hidden border border-border relative z-0 transition-[height] duration-300">
         <MapContainer center={center} zoom={has ? 15 : 7} scrollWheelZoom style={{ height: '100%', width: '100%' }}>
           <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Clicker onPick={(a, b) => tryPlace(a, b)} />
-          <Resize /><Fly target={fly} /><Lock bounds={countryBounds} />
-          {area?.box && <Rectangle bounds={[[area.box[0], area.box[2]], [area.box[1], area.box[3]]]} pathOptions={{ color: '#38BDF8', weight: 2, dashArray: '6 6', fillOpacity: 0.05 }} interactive={false} />}
+          <AutoSize frame={frame} /><Fly target={fly} /><Lock box={locked ? lockBox : null} countryBounds={countryBounds} />
+          {locked && lockBox && <AreaMask box={lockBox} />}
           {has && <Marker position={[lat, lng]} icon={pin} draggable eventHandlers={{
             dragend: (e) => { const p = e.target.getLatLng(); if (!tryPlace(p.lat, p.lng)) e.target.setLatLng([lat, lng]) },
           }} />}

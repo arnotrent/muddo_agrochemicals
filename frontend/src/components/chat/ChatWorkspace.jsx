@@ -10,16 +10,15 @@ import { listTime } from './fileUtils'
 
 /**
  * Three-pane chat shared by Admin and Agent.
- *   desktop (xl): conversations | chat | info      tablet (md): conversations | chat, info = drawer
- *   mobile: one pane at a time with slide transitions
- * `loadContacts` returns { items, teamPreview, teamTime } already normalised by the page.
+ *   ≥1060px: conversations | chat | info     720–1060: list + chat (info = drawer)     <720: one pane at a time
+ * `loadContacts` returns { items, teamPreview, teamTime, teamUnread } already normalised by the page.
+ * The conversation list refreshes every 8 s AND immediately whenever the unread count changes
+ * (new message arrives, or a conversation is opened/read), so badges never lag behind.
  */
 export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceholder = 'Search conversations…' }) {
-  const chat = useChat()
+  const chat = useChat(myId, myRole)
   const { current } = chat
-  const { setActiveChat } = useNotifications()
-  // Layout follows the WORKSPACE's width (the sidebar eats screen width), not the window's:
-  //   < 720px single pane · 720–1060 list + chat (info = drawer) · ≥ 1060 list + chat + info
+  const { setActiveChat, counts } = useNotifications()
   const wrapRef = useRef(null)
   const [w, setW] = useState(1200)
   useEffect(() => {
@@ -30,13 +29,13 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
     return () => ro.disconnect()
   }, [])
   const mode = w < 720 ? 'single' : w < 1060 ? 'double' : 'triple'
-  const [data, setData] = useState({ items: [], teamPreview: '', teamTime: null })
+  const [data, setData] = useState({ items: [], teamPreview: '', teamTime: null, teamUnread: 0 })
   const [search, setSearch] = useState('')
   const [msgSearch, setMsgSearch] = useState('')
   const [msgSearchOpen, setMsgSearchOpen] = useState(false)
   const [infoOpen, setInfoOpen] = useState(false)
   const [filesOpen, setFilesOpen] = useState(false)
-  const [viewer, setViewer] = useState(null) // { items, index }
+  const [viewer, setViewer] = useState(null)
   const [cleared, setCleared] = useState({})
   const key = current ? `${current.role}:${current.id}` : ''
 
@@ -45,8 +44,10 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
     const load = () => !document.hidden && loadContacts().then((d) => live && setData(d)).catch(() => {})
     load()
     const t = setInterval(load, 8000)
-    return () => { live = false; clearInterval(t) }
-  }, [loadContacts])
+    const vis = () => { if (!document.hidden) load() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { live = false; clearInterval(t); document.removeEventListener('visibilitychange', vis) }
+  }, [loadContacts, counts.messages])
 
   const items = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -64,7 +65,6 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
 
   return (
     <div ref={wrapRef} className="flex h-[calc(100dvh-150px)] min-h-[480px] border border-border rounded-card overflow-hidden bg-bg-card relative">
-      {/* conversation list */}
       <div className={`${current && mode === 'single' ? 'hidden' : 'flex'} ${mode === 'single' ? 'w-full' : mode === 'double' ? 'w-[250px]' : 'w-[300px]'} border-r border-border flex-col flex-shrink-0 bg-bg-alt min-h-0 ${mode === 'single' ? 'animate-paneIn' : ''}`}>
         <div className="p-2.5 border-b border-border bg-bg-card flex gap-2">
           <div className="relative flex-1">
@@ -77,7 +77,8 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
           <button role="listitem" onClick={() => select({ id: 0, role: 'broadcast', name: 'Team (Everyone)' })} className={`w-full flex items-center gap-2.5 p-3.5 text-left border-b border-border hover:bg-accent-blue/5 ${key === 'broadcast:0' ? 'bg-accent-blue/10' : ''}`}>
             <div className="w-11 h-11 rounded-full bg-bg-deep text-white flex items-center justify-center flex-shrink-0"><ChatIcon name="users" size="1.2rem" /></div>
             <div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><span className="font-extrabold text-sm text-text-1">Team (Everyone)</span><span className="text-[0.66rem] text-text-3">{listTime(data.teamTime)}</span></div>
-              <div className="text-xs text-text-3 truncate">{data.teamPreview || 'Message everyone at once'}</div></div>
+              <div className="flex justify-between gap-2 items-center"><span className="text-xs text-text-3 truncate">{data.teamPreview || 'Message everyone at once'}</span>
+                {data.teamUnread > 0 && key !== 'broadcast:0' && <span className="bg-accent-blue text-white text-[0.66rem] font-bold min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center flex-shrink-0">{data.teamUnread}</span>}</div></div>
           </button>
           {items.map((c) => (
             <button role="listitem" key={`${c.role}:${c.id}`} onClick={() => select(c)} className={`w-full flex items-center gap-2.5 p-3.5 text-left border-b border-border hover:bg-accent-blue/5 transition-colors ${key === `${c.role}:${c.id}` ? 'bg-accent-blue/10' : c.unread_from > 0 ? 'bg-accent-blue/[0.04]' : ''}`}>
@@ -88,7 +89,7 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
               <div className="min-w-0 flex-1">
                 <div className="flex justify-between gap-2 items-baseline"><span className={`text-sm text-text-1 truncate ${c.unread_from > 0 ? 'font-extrabold' : 'font-bold'}`}>{c.name}</span><span className="text-[0.66rem] text-text-3 flex-shrink-0">{listTime(c.last_message_time)}</span></div>
                 <div className="flex justify-between gap-2 items-center"><span className={`text-xs truncate ${c.unread_from > 0 ? 'text-text-1 font-semibold' : 'text-text-3'}`}>{c.last_message_mine && c.last_message_preview ? 'You: ' : ''}{c.last_message_preview || c.sub || ''}</span>
-                  {c.unread_from > 0 && <span className="bg-accent-blue text-white text-[0.66rem] font-bold min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center flex-shrink-0">{c.unread_from}</span>}</div>
+                  {c.unread_from > 0 && key !== `${c.role}:${c.id}` && <span className="bg-accent-blue text-white text-[0.66rem] font-bold min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center flex-shrink-0">{c.unread_from}</span>}</div>
               </div>
             </button>
           ))}
@@ -98,7 +99,6 @@ export default function ChatWorkspace({ myId, myRole, loadContacts, searchPlaceh
         </div>
       </div>
 
-      {/* active conversation */}
       <div className={`${!current && mode === 'single' ? 'hidden' : 'flex'} flex-1 min-w-0 min-h-0 ${mode === 'single' ? 'animate-paneIn' : ''}`}>
         <ChatWindow
           myId={myId} myRole={myRole} current={enriched} messages={chat.messages} pending={chat.pending}

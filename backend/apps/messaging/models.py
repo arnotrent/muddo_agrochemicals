@@ -6,7 +6,6 @@ from apps.messaging.storage import get_private_storage
 
 
 def attachment_path(instance, filename):
-    # Unguessable storage name; the human filename lives in `original_name`.
     ext = (instance.extension or 'bin').lower()
     return f'chat/{timezone.now():%Y/%m}/{instance.uid.hex}.{ext}'
 
@@ -18,11 +17,10 @@ class Message(models.Model):
     receiver_id = models.IntegerField()
     receiver_role = models.CharField(max_length=10, choices=ROLES)
     content = models.TextField(blank=True)
-    read = models.BooleanField(default=False)
+    read = models.BooleanField(default=False)   # direct messages only; broadcasts use BroadcastRead
     is_broadcast = models.BooleanField(default=False)
     reply_to = models.ForeignKey('self', null=True, blank=True, on_delete=models.SET_NULL, related_name='replies')
-    # LEGACY single attachment (public MEDIA). New uploads use MessageAttachment.
-    attachment = models.FileField(upload_to='chat_attachments/%Y/%m/', blank=True, null=True)
+    attachment = models.FileField(upload_to='chat_attachments/%Y/%m/', blank=True, null=True)  # LEGACY
     delivered_at = models.DateTimeField(null=True, blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -37,9 +35,7 @@ class Message(models.Model):
 
     @property
     def attachment_is_image(self):
-        if not self.attachment:
-            return False
-        return self.attachment.name.lower().endswith(self.IMAGE_EXTS)
+        return bool(self.attachment) and self.attachment.name.lower().endswith(self.IMAGE_EXTS)
 
     @property
     def status(self):
@@ -48,6 +44,21 @@ class Message(models.Model):
         if self.delivered_at:
             return 'delivered'
         return 'sent'
+
+
+class BroadcastRead(models.Model):
+    """
+    Per-reader "seen" marker for team broadcasts. (One shared `read` flag meant the first person to open
+    the Team chat cleared everyone else's unread badge.)
+    """
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='broadcast_reads')
+    reader_id = models.IntegerField()
+    reader_role = models.CharField(max_length=10)
+    read_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = [('message', 'reader_id', 'reader_role')]
+        indexes = [models.Index(fields=['reader_role', 'reader_id'], name='msg_bcast_reader_idx')]
 
 
 class MessageAttachment(models.Model):

@@ -4,15 +4,13 @@ import { useAuth } from '../../context/AuthContext'
 import ChatWorkspace from '../../components/chat/ChatWorkspace'
 import Icon from '../../components/Icon'
 
-// The red "Chat problem" diagnostics banner was removed from this screen on request.
-// The diagnostics endpoint and `python manage.py check_chat` still exist for troubleshooting.
 export default function AdminChatPage() {
   const { user } = useAuth()
   const loadContacts = useCallback(async () => {
     const { data } = await messagingApi.adminContacts()
     return {
       items: data.contacts.map((c) => ({ ...c, role: 'agent', sub: c.region })),
-      teamPreview: data.last_team_preview, teamTime: data.last_team_time,
+      teamPreview: data.last_team_preview, teamTime: data.last_team_time, teamUnread: data.team_unread || 0,
     }
   }, [])
   return (

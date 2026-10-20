@@ -1,60 +1,75 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { messagingApi } from '../api/services'
 import { categoryOf, extOf } from '../components/chat/fileUtils'
 
+const POLL_MS = 2500
+const byId = (a, b) => a.id - b.id
+const merge = (prev, incoming) => {
+  const map = new Map(prev.map((m) => [m.id, m]))
+  incoming.forEach((m) => map.set(m.id, { ...(map.get(m.id) || {}), ...m }))
+  return [...map.values()].sort(byId)
+}
+
 /**
- * Polling chat (deliberately not WebSockets). 3s poll while a conversation is open.
- *  - optimistic "sending" bubbles with real upload progress (axios onUploadProgress)
- *  - failed sends stay in the list with Retry / Remove
- *  - first load fetches the newest 100 messages; polls only fetch what's new
- *  - polling pauses while the tab is hidden, and a request can't overlap the next tick
+ * Polling chat (no WebSockets). One request per tick (new messages + tick status of my sent ones).
+ *  - optimistic "sending" bubbles with real upload progress; failed sends stay with Retry / Remove
+ *  - first load fetches the newest 100; later polls fetch only what is new
+ *  - "mark as read" is sent only when something new arrived (not every poll)
+ *  - never skips a message: the cursor moves only with what the server actually returned
+ *  - preview URLs for pending images are created once per draft and freed afterwards (no memory leak)
+ * `myId` / `myRole` identify my own messages so their tick status can be tracked.
  */
-export function useChat() {
+export function useChat(myId, myRole) {
   const [current, setCurrent] = useState(null)
   const [messages, setMessages] = useState([])
-  const [pending, setPending] = useState([]) // local, not yet confirmed by the server
+  const [pending, setPending] = useState([])
   const [sending, setSending] = useState(false)
   const lastIdRef = useRef(0)
   const pollRef = useRef(null)
   const busyRef = useRef(false)
   const targetRef = useRef(null)
+  const messagesRef = useRef([])
+  const urlsRef = useRef(new Map())
+  messagesRef.current = messages
+
+  const markRead = useCallback((target) => {
+    if (document.hidden) return
+    messagingApi.markRead(target.role === 'broadcast' ? { from_role: 'broadcast' } : { from_id: target.id, from_role: target.role }).catch(() => {})
+  }, [])
 
   const loadMessages = useCallback(async (target) => {
     if (!target || busyRef.current) return
     busyRef.current = true
     try {
+      const initial = lastIdRef.current === 0
       const params = target.role === 'broadcast'
         ? { with_role: 'broadcast', after: lastIdRef.current }
         : { with_id: target.id, with_role: target.role, after: lastIdRef.current }
+      if (target.role !== 'broadcast') {
+        const track = messagesRef.current.filter((m) => m.sender_role === myRole && m.sender_id === myId && m.status !== 'read').slice(-50).map((m) => m.id)
+        if (track.length) params.track = track.join(',')
+      }
       const { data } = await messagingApi.list(params)
       if (targetRef.current !== target) return // user switched conversation mid-flight
-      const fresh = (data.messages || []).filter((m) => m.id > lastIdRef.current)
-      if (fresh.length) {
-        lastIdRef.current = Math.max(lastIdRef.current, ...fresh.map((m) => m.id))
+      const incoming = data.messages || []
+      const statuses = data.statuses || {}
+      const have = new Set(messagesRef.current.map((m) => m.id))
+      const brandNew = incoming.filter((m) => !have.has(m.id))
+      if (incoming.length) lastIdRef.current = Math.max(lastIdRef.current, ...incoming.map((m) => m.id))
+      if (incoming.length || Object.keys(statuses).length) {
         setMessages((prev) => {
-          const have = new Set(prev.map((m) => m.id))
-          return [...prev, ...fresh.filter((m) => !have.has(m.id))]
+          let next = incoming.length ? merge(prev, incoming) : prev
+          if (Object.keys(statuses).length) next = next.map((m) => (statuses[m.id] ? { ...m, ...statuses[m.id] } : m))
+          return next
         })
       }
-      // refresh read/delivered state of what we already show (ticks)
-      if (lastIdRef.current) refreshStatuses(target)
-      messagingApi.markRead(target.role === 'broadcast' ? { from_role: 'broadcast' } : { from_id: target.id, from_role: target.role }).catch(() => {})
+      if (initial || brandNew.length) markRead(target)
     } catch { /* transient — next tick retries */ } finally { busyRef.current = false }
-  }, [])
-
-  const refreshStatuses = async (target) => {
-    try {
-      const params = target.role === 'broadcast' ? { with_role: 'broadcast', after: 0 } : { with_id: target.id, with_role: target.role, after: 0 }
-      const { data } = await messagingApi.list(params)
-      if (targetRef.current !== target) return
-      const byId = new Map((data.messages || []).map((m) => [m.id, m]))
-      setMessages((prev) => prev.map((m) => (byId.has(m.id) && byId.get(m.id).status !== m.status ? { ...m, status: byId.get(m.id).status, read: byId.get(m.id).read } : m)))
-    } catch { /* ignore */ }
-  }
+  }, [markRead, myId, myRole])
 
   const startPolling = useCallback((target) => {
     clearInterval(pollRef.current)
-    pollRef.current = setInterval(() => { if (!document.hidden) loadMessages(target) }, 3000)
+    pollRef.current = setInterval(() => { if (!document.hidden) loadMessages(target) }, POLL_MS)
   }, [loadMessages])
 
   const selectContact = useCallback((target) => {
@@ -70,11 +85,21 @@ export function useChat() {
     setCurrent(null); setMessages([]); setPending([])
   }, [])
 
-  useEffect(() => () => clearInterval(pollRef.current), [])
+  // catch up the instant the tab becomes visible again / the network returns
+  useEffect(() => {
+    const now = () => { if (!document.hidden && targetRef.current) loadMessages(targetRef.current) }
+    document.addEventListener('visibilitychange', now); window.addEventListener('online', now); window.addEventListener('focus', now)
+    return () => { document.removeEventListener('visibilitychange', now); window.removeEventListener('online', now); window.removeEventListener('focus', now) }
+  }, [loadMessages])
+
+  useEffect(() => () => {
+    clearInterval(pollRef.current)
+    urlsRef.current.forEach((u) => URL.revokeObjectURL(u)); urlsRef.current.clear()
+  }, [])
 
   const transmit = useCallback(async (draft, target) => {
     const upd = (patch) => setPending((p) => p.map((d) => (d.localId === draft.localId ? { ...d, ...patch } : d)))
-    upd({ state: 'sending', progress: 0 })
+    upd({ state: 'sending', progress: 0, error: undefined })
     try {
       const fd = new FormData()
       fd.append('content', draft.content || '')
@@ -86,8 +111,9 @@ export function useChat() {
         if (e.total) upd({ progress: Math.min(99, Math.round((e.loaded / e.total) * 100)) })
       })
       upd({ state: 'done', progress: 100 })
-      lastIdRef.current = Math.max(lastIdRef.current, data.message.id)
-      if (targetRef.current === target) setMessages((prev) => (prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message]))
+      // NOTE: the poll cursor is deliberately NOT moved here — a message from the other side that arrived
+      // just before mine would otherwise be skipped forever. The next poll de-duplicates by id.
+      if (targetRef.current === target) setMessages((prev) => merge(prev, [data.message]))
       setTimeout(() => setPending((p) => p.filter((d) => d.localId !== draft.localId)), 600)
     } catch (err) {
       const d = err.response?.data
@@ -112,14 +138,21 @@ export function useChat() {
 
   const discard = useCallback((localId) => setPending((p) => p.filter((d) => d.localId !== localId)), [])
 
-  // attach metadata so a pending draft renders through the same bubble code
-  const pendingView = pending.map((d) => ({
+  // free preview URLs of drafts that are gone
+  useEffect(() => {
+    const live = new Set(pending.map((d) => d.localId))
+    urlsRef.current.forEach((url, key) => { if (!live.has(key.split('|')[0])) { URL.revokeObjectURL(url); urlsRef.current.delete(key) } })
+  }, [pending])
+
+  const pendingView = useMemo(() => pending.map((d) => ({
     ...d,
-    attachments: d.files.map((f, i) => ({
-      id: `${d.localId}-${i}`, name: f.name, extension: extOf(f.name), category: categoryOf(f.name), size: f.size,
-      url: categoryOf(f.name) === 'image' ? URL.createObjectURL(f) : null, pending: true,
-    })),
-  }))
+    attachments: d.files.map((f, i) => {
+      const image = categoryOf(f.name) === 'image'
+      const key = `${d.localId}|${i}`
+      if (image && !urlsRef.current.has(key)) urlsRef.current.set(key, URL.createObjectURL(f))
+      return { id: `${d.localId}-${i}`, name: f.name, extension: extOf(f.name), category: categoryOf(f.name), size: f.size, url: image ? urlsRef.current.get(key) : null, pending: true }
+    }),
+  })), [pending])
 
   return { current, messages, pending: pendingView, sending, selectContact, closeConversation, send, retry, discard }
 }

@@ -20,9 +20,10 @@ function beep() {
 
 /**
  * Near-instant notifications by short polling (no WebSockets by design).
- * Polls every 4s while the tab is visible, every 20s while hidden, immediately when the tab regains focus.
- * New items → toast (+ optional sound) and, when the tab is hidden, a desktop notification.
- * Unread/pending counts feed the sidebar badges and the tab title "(3) …".
+ *  • polls every 4 s while the tab is visible, every 20 s while hidden;
+ *  • refreshes IMMEDIATELY when the tab regains focus/visibility, the network returns, or any request in the app
+ *    changes data (api/client.js fires `notifications:refresh`) — so badges drop the moment an item is handled;
+ *  • one request at a time: a refresh asked for mid-request runs right after it, never in parallel.
  */
 export function NotificationProvider({ children }) {
   const { user } = useAuth()
@@ -32,13 +33,15 @@ export function NotificationProvider({ children }) {
   const [sound, setSound] = useState(() => localStorage.getItem(SOUND_KEY) !== 'off')
   const [perm, setPerm] = useState(typeof Notification !== 'undefined' ? Notification.permission : 'unsupported')
   const cursors = useRef(null)
-  const active = useRef(null) // currently open chat {id, role}
+  const active = useRef(null)
   const soundRef = useRef(sound)
   const failures = useRef(0)
+  const kickRef = useRef(() => {})
   soundRef.current = sound
 
   const dismiss = useCallback((id) => setToasts((t) => t.filter((x) => x.toastId !== id)), [])
   const setActiveChat = useCallback((c) => { active.current = c }, [])
+  const refresh = useCallback(() => kickRef.current(), [])
   const toggleSound = useCallback(() => setSound((s) => { localStorage.setItem(SOUND_KEY, s ? 'off' : 'on'); return !s }), [])
   const askPermission = useCallback(async () => {
     if (typeof Notification === 'undefined') return
@@ -47,10 +50,17 @@ export function NotificationProvider({ children }) {
 
   useEffect(() => {
     if (!user) return undefined
-    let stop = false, timer
+    let stop = false, timer, debounce, inflight = false, again = false
     cursors.current = null
+    setCounts(EMPTY)
 
-    const tick = async () => {
+    const schedule = () => { if (!stop) timer = setTimeout(tick, document.hidden ? 20000 : 4000 * (1 + failures.current)) }
+
+    async function tick() {
+      if (stop) return
+      if (inflight) { again = true; return }
+      inflight = true
+      clearTimeout(timer)
       try {
         const c = cursors.current
         const params = c ? { after_msg: c.msg, after_enq: c.enq, after_sup: c.sup, after_rev: c.rev, after_tes: c.tes } : {}
@@ -62,8 +72,8 @@ export function NotificationProvider({ children }) {
         const fresh = (data.events || []).filter((e) => {
           if (e.type !== 'message') return true
           const a = active.current
-          const open = a && !document.hidden && ((e.broadcast && a.role === 'broadcast') || (!e.broadcast && a.role === e.sender_role && a.id === e.sender_id))
-          return !open // don't toast for the conversation you're looking at
+          const open = a && !document.hidden && ((e.broadcast && a.role === 'broadcast') || (!e.broadcast && a.role === e.sender_role && (a.role === 'admin' || a.id === e.sender_id)))
+          return !open // no toast for the conversation you are looking at
         })
         if (c && fresh.length) {
           const stamped = fresh.map((e) => ({ ...e, toastId: `${e.id}-${Date.now()}` }))
@@ -77,22 +87,37 @@ export function NotificationProvider({ children }) {
           stamped.forEach((e) => setTimeout(() => dismiss(e.toastId), 8000))
         }
       } catch { failures.current = Math.min(failures.current + 1, 5) }
-      if (!stop) timer = setTimeout(tick, document.hidden ? 20000 : 4000 * (1 + failures.current))
+      inflight = false
+      if (again) { again = false; tick(); return }
+      schedule()
     }
-    const onVis = () => { if (!document.hidden) { clearTimeout(timer); tick() } }
-    document.addEventListener('visibilitychange', onVis)
+
+    const kick = () => { clearTimeout(timer); tick() }
+    kickRef.current = kick
+    const onRefresh = () => { clearTimeout(debounce); debounce = setTimeout(kick, 250) }
+    const onVisible = () => { if (!document.hidden) kick() }
+    window.addEventListener('notifications:refresh', onRefresh)
+    window.addEventListener('focus', onVisible)
+    window.addEventListener('online', kick)
+    document.addEventListener('visibilitychange', onVisible)
     tick()
-    return () => { stop = true; clearTimeout(timer); document.removeEventListener('visibilitychange', onVis) }
+    return () => {
+      stop = true; clearTimeout(timer); clearTimeout(debounce); kickRef.current = () => {}
+      window.removeEventListener('notifications:refresh', onRefresh)
+      window.removeEventListener('focus', onVisible)
+      window.removeEventListener('online', kick)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [user, dismiss])
 
   const total = Object.values(counts).reduce((a, b) => a + b, 0)
   useEffect(() => { document.title = total > 0 ? `(${total}) ${BASE_TITLE}` : BASE_TITLE; return () => { document.title = BASE_TITLE } }, [total])
 
-  const value = useMemo(() => ({ counts, total, toasts, recent, sound, perm, dismiss, setActiveChat, toggleSound, askPermission }),
-    [counts, total, toasts, recent, sound, perm, dismiss, setActiveChat, toggleSound, askPermission])
+  const value = useMemo(() => ({ counts, total, toasts, recent, sound, perm, dismiss, setActiveChat, refresh, toggleSound, askPermission }),
+    [counts, total, toasts, recent, sound, perm, dismiss, setActiveChat, refresh, toggleSound, askPermission])
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
 
 export function useNotifications() {
-  return useContext(Ctx) || { counts: EMPTY, total: 0, toasts: [], recent: [], sound: false, perm: 'unsupported', dismiss() {}, setActiveChat() {}, toggleSound() {}, askPermission() {} }
+  return useContext(Ctx) || { counts: EMPTY, total: 0, toasts: [], recent: [], sound: false, perm: 'unsupported', dismiss() {}, setActiveChat() {}, refresh() {}, toggleSound() {}, askPermission() {} }
 }

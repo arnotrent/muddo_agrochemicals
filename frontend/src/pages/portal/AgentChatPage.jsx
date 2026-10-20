@@ -12,7 +12,7 @@ export default function AgentChatPage() {
       ...(data.admin ? [{ ...data.admin, role: 'admin', name: 'Muddo Agro Admin', sub: 'Head Office', is_online: true }] : []),
       ...data.other_agents.map((a) => ({ ...a, role: 'agent', sub: a.region })),
     ]
-    return { items, teamPreview: data.last_team_preview, teamTime: data.last_team_time }
+    return { items, teamPreview: data.last_team_preview, teamTime: data.last_team_time, teamUnread: data.team_unread || 0 }
   }, [])
   return (
     <div>

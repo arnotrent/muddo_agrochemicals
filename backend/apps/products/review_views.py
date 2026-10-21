@@ -8,12 +8,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.core import edit_tokens
 from apps.core.permissions import IsAdmin
 from apps.core.throttles import ReviewThrottle
 from apps.products.models import Product, ProductReview
 from apps.products.review_serializers import (
-    ReviewPublicSerializer, ReviewCreateSerializer, ReviewAdminSerializer, ReviewRecentSerializer, hash_ip,
+    ReviewPublicSerializer, ReviewCreateSerializer, ReviewAdminSerializer, hash_ip,
 )
 
 
@@ -28,8 +27,8 @@ def _summary(qs):
 class ProductReviewsView(APIView):
     """
     GET  /api/v1/products/<id>/reviews/  -> approved reviews + rating summary (public)
-    POST /api/v1/products/<id>/reviews/  -> submit a review; stored 'pending'; returns an `edit_token` so the reviewer can
-                                            edit / withdraw it later (public, throttled)
+    POST /api/v1/products/<id>/reviews/  -> submit a review; stored 'pending' — ONLY the admin decides what is published.
+                                            The reviewer is never shown the status of their review (public, throttled)
     """
     permission_classes = [AllowAny]
 
@@ -46,24 +45,15 @@ class ProductReviewsView(APIView):
         s = ReviewCreateSerializer(data=request.data)
         s.is_valid(raise_exception=True)
         d = s.validated_data
-        ok = {'detail': 'Thank you! Your review was submitted and will appear once our team approves it.'}
+        ok = {'detail': 'Thank you for your feedback! Our team reads every review.'}
         if d.get('website'):  # bot filled the hidden field — pretend success, store nothing
             return Response(ok, status=status.HTTP_201_CREATED)
         ip = hash_ip(ReviewThrottle().get_ident(request))
         if ProductReview.objects.filter(product=product, ip_hash=ip, created_at__gte=timezone.now() - timedelta(hours=24)).exists():
-            return Response({'detail': 'You have already reviewed this product recently. You can edit your earlier review from "Your reviews".'},
+            return Response({'detail': 'You have already sent a review for this product recently. Thank you!'},
                             status=status.HTTP_400_BAD_REQUEST)
-        r = ProductReview.objects.create(product=product, name=d['name'], rating=d['rating'], comment=d['comment'], ip_hash=ip)
-        return Response({**ok, 'edit_token': edit_tokens.make('product', r.pk)}, status=status.HTTP_201_CREATED)
-
-
-class RecentReviewsView(APIView):
-    """GET /api/v1/reviews/recent/ — newest approved product reviews across the whole catalogue (public Reviews page)."""
-    permission_classes = [AllowAny]
-
-    def get(self, request):
-        approved = ProductReview.objects.filter(status='approved').select_related('product')
-        return Response({'summary': _summary(approved), 'results': ReviewRecentSerializer(approved[:40], many=True).data})
+        ProductReview.objects.create(product=product, name=d['name'], rating=d['rating'], comment=d['comment'], ip_hash=ip)
+        return Response(ok, status=status.HTTP_201_CREATED)
 
 
 class AdminReviewListView(generics.ListAPIView):

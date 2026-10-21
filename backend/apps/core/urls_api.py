@@ -1,7 +1,6 @@
 from django.urls import path
 from apps.core import api_views as v
 from apps.core import enquiry_views as e
-from apps.core.review_edit import review_edit_view
 from apps.core.notifications import notifications_summary_view
 
 urlpatterns = [
@@ -13,7 +12,6 @@ urlpatterns = [
     path('search/', v.global_search_view, name='api_global_search'),
     path('me/staff-profile/', v.MyStaffProfileView.as_view(), name='api_my_staff_profile'),
     path('notifications/summary/', notifications_summary_view, name='api_notifications_summary'),
-    path('review-edit/<str:kind>/<str:token>/', review_edit_view, name='api_review_edit'),
 
     # admin-only
     path('admin/contact-requests/', e.AdminEnquiryList.as_view(), name='api_admin_contact_list'),

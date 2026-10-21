@@ -20,7 +20,6 @@ const AboutPage = lazy(() => import('./pages/public/AboutPage'))
 const TrackPage = lazy(() => import('./pages/public/TrackPage'))
 const SearchPage = lazy(() => import('./pages/public/SearchPage'))
 const ComparePage = lazy(() => import('./pages/public/ComparePage'))
-const ReviewsPage = lazy(() => import('./pages/public/ReviewsPage'))
 const LoginPage = lazy(() => import('./pages/public/LoginPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/public/ResetPasswordPage'))
@@ -41,8 +40,6 @@ const AdminChatPage = lazy(() => import('./pages/admin/AdminChatPage'))
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage'))
 const AdminNewsletterPage = lazy(() => import('./pages/admin/AdminNewsletterPage'))
 const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'))
-//const AdminSiteContentPage = lazy(() => import('./pages/admin/AdminSiteContentPage'))
-const AdminReviewsPage = lazy(() => import('./pages/admin/AdminReviewsPage'))
 const AdminLeadershipPage = lazy(() => import('./pages/admin/AdminLeadershipPage'))
 const AdminTestimonialsPage = lazy(() => import('./pages/admin/AdminTestimonialsPage'))
 
@@ -78,7 +75,6 @@ export default function App() {
                 <Route path="/track" element={<TrackPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/compare" element={<ComparePage />} />
-                <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
 
@@ -100,7 +96,6 @@ export default function App() {
                   <Route path="/admin/inventory" element={<AdminInventoryPage />} />
                   <Route path="/admin/distributors" element={<AdminDistributorsPage />} />
                   <Route path="/admin/requests" element={<AdminRequestsPage />} />
-                  <Route path="/admin/reviews" element={<AdminReviewsPage />} />
                   <Route path="/admin/testimonials" element={<AdminTestimonialsPage />} />
                   <Route path="/admin/leadership" element={<AdminLeadershipPage />} />
                   <Route path="/admin/supply-requests" element={<AdminSupplyRequestsPage />} />
@@ -109,7 +104,6 @@ export default function App() {
                   <Route path="/admin/newsletter" element={<AdminNewsletterPage />} />
                   <Route path="/admin/import" element={<AdminImportPage />} />
                   <Route path="/admin/settings" element={<AdminSettingsPage />} />
-                  <Route path="/admin/site-content" element={<AdminSiteContentPage />} />
                 </Route>
               </Route>
             </Routes>

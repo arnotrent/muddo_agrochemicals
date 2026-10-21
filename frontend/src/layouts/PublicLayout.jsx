@@ -59,7 +59,6 @@ export default function PublicLayout() {
               </ul>
             </li>
             <li><NavLink to="/distributors" className={navLinkClass}>Find a Store</NavLink></li>
-            <li><NavLink to="/reviews" className={navLinkClass}>Reviews</NavLink></li>
             <li><NavLink to="/about" className={navLinkClass}>About</NavLink></li>
             <li><NavLink to="/contact" className={navLinkClass}>Contact</NavLink></li>
             {user && (
@@ -88,7 +87,7 @@ export default function PublicLayout() {
             {[
               ['/', 'Home', 'home'], ['/products/pesticides', 'Pesticides', 'bug'], ['/products/herbicides', 'Herbicides', 'seedling'],
               ['/products/fungicides', 'Fungicides', 'microscope'], ['/products/other', 'Others & Equipment', 'boxes'], ['/compare', 'Compare Products', 'balance-scale'],
-              ['/distributors', 'Find a Store', 'store'], ['/reviews', 'Customer Reviews', 'star'], ['/about', 'About Us & FAQ', 'info-circle'],
+              ['/distributors', 'Find a Store', 'store'], ['/about', 'About Us & FAQ', 'info-circle'],
               ['/contact', 'Contact Us', 'envelope'], ['/track', 'Track Enquiry', 'search'],
             ].map(([to, label, icon]) => (
               <Link key={to} to={to} onClick={() => setMenuOpen(false)} className="flex items-center gap-3 px-5 py-3.5 text-text-1 text-sm border-b border-border hover:bg-bg-alt">
@@ -134,7 +133,6 @@ export default function PublicLayout() {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/about" className="hover:text-accent-blue">About Us & FAQ</Link></li>
                 <li><Link to="/distributors" className="hover:text-accent-blue">Find a Store</Link></li>
-                <li><Link to="/reviews" className="hover:text-accent-blue">Customer Reviews</Link></li>
                 <li><Link to="/contact" className="hover:text-accent-blue">Contact Us</Link></li>
                 <li><Link to="/track" className="hover:text-accent-blue">Track Enquiry</Link></li>
               </ul>

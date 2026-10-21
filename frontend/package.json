@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "images": "node scripts/build-image-manifest.mjs",
-    "predev": "node scripts/build-image-manifest.mjs",
+    "predev": "node scripts/check-routes.mjs && node scripts/build-image-manifest.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/build-image-manifest.mjs",
+    "prebuild": "node scripts/check-routes.mjs && node scripts/build-image-manifest.mjs",
     "build": "vite build",
     "postbuild": "node scripts/postbuild.mjs",
     "preview": "vite preview",

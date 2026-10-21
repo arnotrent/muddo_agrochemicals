@@ -1,31 +1,31 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { testimonialsApi } from '../api/services'
 import { Stars } from './StarRating'
 import Avatar from './Avatar'
-import ShareExperience from './ShareExperience'
-import MyReviews from './MyReviews'
+import FeedbackModal from './FeedbackModal'
 import Icon from './Icon'
 import Reveal from './Reveal'
 
-export default function TestimonialsSection({ showAllLink = true }) {
+export default function TestimonialsSection() {
   const [items, setItems] = useState([])
   const [loaded, setLoaded] = useState(false)
+  const [open, setOpen] = useState(false)
   useEffect(() => { testimonialsApi.list().then(({ data }) => setItems(data.results || data)).catch(() => {}).finally(() => setLoaded(true)) }, [])
-  const avg = useMemo(() => { const r = items.filter((t) => t.rating); return r.length ? r.reduce((a, t) => a + t.rating, 0) / r.length : 0 }, [items])
+  const rated = useMemo(() => items.filter((t) => t.rating), [items])
+  const avg = rated.length ? rated.reduce((a, t) => a + t.rating, 0) / rated.length : 0
   if (!loaded) return null
   return (
     <section className="py-16" aria-label="Customer testimonials">
       <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3"><Icon name="comments" />Reviews</div>
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-bg-alt text-accent-blue text-xs font-bold uppercase tracking-wide mb-3"><Icon name="comments" />Testimonials</div>
           <h2 className="text-3xl font-bold text-text-1">What Farmers Say</h2>
           <p className="text-text-3 max-w-[56ch] mx-auto mt-2.5">Real experiences from the people who grow with MACL products.</p>
-          {avg > 0 && <div className="mt-4 inline-flex items-center gap-2.5"><Stars value={avg} size={22} /><span className="font-bold text-text-1">{avg.toFixed(1)}</span><span className="text-sm text-text-3">from {items.filter((t) => t.rating).length} rating{items.filter((t) => t.rating).length !== 1 ? 's' : ''}</span></div>}
+          {avg > 0 && <div className="mt-4 inline-flex items-center gap-2.5"><Stars value={avg} size={22} /><span className="font-bold text-text-1">{avg.toFixed(1)}</span><span className="text-sm text-text-3">from {rated.length} rating{rated.length !== 1 ? 's' : ''}</span></div>}
         </div>
-        {items.length > 0 ? (
+        {items.length > 0 && (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {items.slice(0, 6).map((t, i) => (
+            {items.map((t, i) => (
               <Reveal key={t.id} delay={Math.min(i, 5) * 60}>
                 <figure className="bg-bg-card border border-border rounded-card p-6 h-full flex flex-col hover:border-accent-blue transition-colors">
                   {t.rating ? <Stars value={t.rating} size={16} /> : null}
@@ -39,12 +39,13 @@ export default function TestimonialsSection({ showAllLink = true }) {
               </Reveal>
             ))}
           </div>
-        ) : <p className="text-center text-text-3">Be the first to share how MACL products worked for you.</p>}
-        {showAllLink && items.length > 0 && <div className="text-center mt-7"><Link to="/reviews" className="text-sm font-bold text-accent-blue">See all reviews &rarr;</Link></div>}
-
-        <div className="mt-12"><ShareExperience /></div>
-        <MyReviews kind="testimonial" className="mt-6" />
+        )}
+        <div className="text-center mt-10">
+          {!items.length && <p className="text-text-3 mb-4">Be the first to share how MACL products worked for you.</p>}
+          <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 px-7 py-3 rounded-btn bg-accent-blue text-white font-bold text-sm shadow-glow-blue hover:bg-accent-blue-hover"><Icon name="comments" />Give feedback</button>
+        </div>
       </div>
+      <FeedbackModal open={open} onClose={() => setOpen(false)} mode="site" />
     </section>
   )
 }

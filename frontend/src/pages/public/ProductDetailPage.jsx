@@ -91,7 +91,7 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
-        <ReviewsSection productId={product.id} />
+        <ReviewsSection productId={product.id} productName={product.name} />
 
         {related.length > 0 && (
           <div className="mt-16">

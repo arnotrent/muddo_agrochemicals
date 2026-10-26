@@ -12,7 +12,7 @@ from apps.core.permissions import IsAdmin
 from apps.core.throttles import ReviewThrottle
 from apps.products.models import Product, ProductReview
 from apps.products.review_serializers import (
-    ReviewPublicSerializer, ReviewCreateSerializer, ReviewAdminSerializer, hash_ip,
+    ReviewPublicSerializer, ReviewRecentSerializer, ReviewCreateSerializer, ReviewAdminSerializer, hash_ip,
 )
 
 
@@ -54,6 +54,19 @@ class ProductReviewsView(APIView):
                             status=status.HTTP_400_BAD_REQUEST)
         ProductReview.objects.create(product=product, name=d['name'], rating=d['rating'], comment=d['comment'], ip_hash=ip)
         return Response(ok, status=status.HTTP_201_CREATED)
+
+
+class RecentReviewsView(APIView):
+    """
+    GET /api/v1/reviews/recent/  -> { summary, results } for APPROVED reviews of ALL products (public, read-only).
+    Feeds the "Product reviews" tab on the public Reviews page (frontend: communityApi.recentProductReviews).
+    """
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        approved = ProductReview.objects.filter(status='approved').select_related('product')
+        recent = approved.order_by('-created_at')[:60]
+        return Response({'summary': _summary(approved), 'results': ReviewRecentSerializer(recent, many=True).data})
 
 
 class AdminReviewListView(generics.ListAPIView):

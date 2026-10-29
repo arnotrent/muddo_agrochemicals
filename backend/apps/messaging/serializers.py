@@ -26,31 +26,56 @@ def attachment_url(request, uid):
     return request.build_absolute_uri(path) if request else path
 
 
-def display_name(role, sid):
+# ── name / avatar lookups ────────────────────────────────────────────
+# The old code ran 2-4 database queries PER MESSAGE just to print a sender's name, so opening a conversation with
+# 100 messages cost hundreds of queries (that was the slow chat loading). Lookups are now memoised for the lifetime
+# of one request: a conversation has two participants, so it costs two queries in total.
+def _cache(request):
+    if request is None:
+        return {}
+    cache = getattr(request, '_muddo_person_cache', None)
+    if cache is None:
+        cache = {}
+        try:
+            request._muddo_person_cache = cache
+        except Exception:  # noqa: BLE001
+            pass
+    return cache
+
+
+def _person(role, sid, request=None):
+    cache = _cache(request)
+    key = (role, sid)
+    if key in cache:
+        return cache[key]
     if role == 'admin':
-        u = User.objects.filter(pk=sid, is_staff=True).first()
+        u = User.objects.select_related('staff_profile').filter(pk=sid, is_staff=True).first()
         if u:
             profile = getattr(u, 'staff_profile', None)
-            return profile.name if profile else (u.get_full_name() or u.username)
-        return 'Admin'
-    a = Agent.objects.filter(pk=sid).first()
-    return a.name if a else 'Agent'
+            out = (profile.name if profile else (u.get_full_name() or u.username),
+                   profile.avatar_url if profile else None)
+        else:
+            out = ('Admin', None)
+    else:
+        a = Agent.objects.select_related('user').filter(pk=sid).first()
+        out = (a.name, a.avatar_url) if a else ('Agent', None)
+    cache[key] = out
+    return out
 
 
-def avatar_url(role, sid):
-    if role == 'admin':
-        u = User.objects.filter(pk=sid).first()
-        profile = getattr(u, 'staff_profile', None) if u else None
-        return profile.avatar_url if profile else None
-    a = Agent.objects.filter(pk=sid).first()
-    return a.avatar_url if a else None
+def display_name(role, sid, request=None):
+    return _person(role, sid, request)[0]
+
+
+def avatar_url(role, sid, request=None):
+    return _person(role, sid, request)[1]
 
 
 def serialize_attachment(att, request):
     return {
         'id': str(att.uid), 'message_id': att.message_id, 'name': att.original_name,
         'extension': att.extension, 'mime_type': att.mime_type, 'category': att.category,
-        'size': att.size, 'uploaded_by_name': display_name(att.uploaded_by_role, att.uploaded_by_id),
+        'size': att.size, 'uploaded_by_name': display_name(att.uploaded_by_role, att.uploaded_by_id, request),
         'uploaded_by_role': att.uploaded_by_role, 'uploaded_at': att.uploaded_at.isoformat(),
         'url': attachment_url(request, att.uid),
     }
@@ -73,26 +98,32 @@ class MessageSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def _req(self):
+        return self.context.get('request')
+
     def get_sender_name(self, obj):
-        return display_name(obj.sender_role, obj.sender_id)
+        return display_name(obj.sender_role, obj.sender_id, self._req())
 
     def get_sender_avatar_url(self, obj):
-        return avatar_url(obj.sender_role, obj.sender_id)
+        return avatar_url(obj.sender_role, obj.sender_id, self._req())
 
     def get_reply_to_detail(self, obj):
         if not obj.reply_to_id or not obj.reply_to:
             return None
         r = obj.reply_to
-        has_att = r.attachments.exists() or bool(r.attachment)
+        preview = r.content[:80] if r.content else ''
+        if not preview and (r.attachment or r.attachments.exists()):
+            preview = '\U0001F4CE Attachment'
         return {
-            'id': r.id, 'sender_role': r.sender_role, 'sender_name': display_name(r.sender_role, r.sender_id),
-            'content': (r.content[:80] if r.content else ('\U0001F4CE Attachment' if has_att else '')),
+            'id': r.id, 'sender_role': r.sender_role,
+            'sender_name': display_name(r.sender_role, r.sender_id, self._req()),
+            'content': preview,
         }
 
     def get_attachments(self, obj):
-        request = self.context.get('request')
+        request = self._req()
         items = [serialize_attachment(a, request) for a in obj.attachments.all()]
-        if obj.attachment:  # legacy single file (public MEDIA) from before this upgrade
+        if obj.attachment:  # legacy single file (public MEDIA) from before the attachment upgrade
             name = obj.attachment.name.rsplit('/', 1)[-1]
             ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
             try:
@@ -103,7 +134,7 @@ class MessageSerializer(serializers.ModelSerializer):
             items.append({
                 'id': f'legacy-{obj.pk}', 'message_id': obj.pk, 'name': name, 'extension': ext,
                 'mime_type': '', 'category': 'image' if obj.attachment_is_image else 'document',
-                'size': None, 'uploaded_by_name': display_name(obj.sender_role, obj.sender_id),
+                'size': None, 'uploaded_by_name': display_name(obj.sender_role, obj.sender_id, request),
                 'uploaded_by_role': obj.sender_role, 'uploaded_at': obj.created_at.isoformat(),
                 'url': url, 'legacy': True,
             })

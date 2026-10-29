@@ -6,7 +6,11 @@ from apps.leadership.serializers import LeaderSerializer
 
 
 class LeaderViewSet(viewsets.ModelViewSet):
-    """GET public (active only; staff see all). POST/PATCH/DELETE staff only."""
+    """
+    GET (list) is PUBLIC and returns ACTIVE leaders only — even when a signed-in admin's token is sent, so a hidden
+    leader can never leak onto the public website. The admin panel asks for everything with ?all=1.
+    Detail / write actions (edit, hide, delete) are staff-only and can reach hidden leaders.
+    """
     serializer_class = LeaderSerializer
     permission_classes = [IsAdminOrReadOnly]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
@@ -15,4 +19,8 @@ class LeaderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         u = self.request.user
         qs = Leader.objects.all()
-        return qs if (u.is_authenticated and u.is_staff) else qs.filter(active=True)
+        if not (u.is_authenticated and u.is_staff):
+            return qs.filter(active=True)
+        if self.action == 'list' and self.request.query_params.get('all') != '1':
+            return qs.filter(active=True)
+        return qs

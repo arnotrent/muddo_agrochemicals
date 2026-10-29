@@ -3,20 +3,22 @@ import { messagingApi } from '../api/services'
 import { categoryOf, extOf } from '../components/chat/fileUtils'
 
 const POLL_MS = 2500
+const CACHE_MAX = 20
 const byId = (a, b) => a.id - b.id
 const merge = (prev, incoming) => {
   const map = new Map(prev.map((m) => [m.id, m]))
   incoming.forEach((m) => map.set(m.id, { ...(map.get(m.id) || {}), ...m }))
   return [...map.values()].sort(byId)
 }
+const keyOf = (t) => `${t.role}:${t.id}`
 
 /**
  * Polling chat (no WebSockets). One request per tick (new messages + tick status of my sent ones).
+ *  - re-opening a conversation shows its messages INSTANTLY from an in-memory copy, then fetches only what is new
+ *  - the first open shows a skeleton (`loading`) rather than "No messages yet"
  *  - optimistic "sending" bubbles with real upload progress; failed sends stay with Retry / Remove
- *  - first load fetches the newest 100; later polls fetch only what is new
- *  - "mark as read" is sent only when something new arrived (not every poll)
+ *  - "mark as read" is sent only when something new arrived (or when a conversation is opened)
  *  - never skips a message: the cursor moves only with what the server actually returned
- *  - preview URLs for pending images are created once per draft and freed afterwards (no memory leak)
  * `myId` / `myRole` identify my own messages so their tick status can be tracked.
  */
 export function useChat(myId, myRole) {
@@ -24,12 +26,14 @@ export function useChat(myId, myRole) {
   const [messages, setMessages] = useState([])
   const [pending, setPending] = useState([])
   const [sending, setSending] = useState(false)
+  const [loading, setLoading] = useState(false)
   const lastIdRef = useRef(0)
   const pollRef = useRef(null)
   const busyRef = useRef(false)
   const targetRef = useRef(null)
   const messagesRef = useRef([])
   const urlsRef = useRef(new Map())
+  const cacheRef = useRef(new Map())
   messagesRef.current = messages
 
   const markRead = useCallback((target) => {
@@ -64,8 +68,21 @@ export function useChat(myId, myRole) {
         })
       }
       if (initial || brandNew.length) markRead(target)
-    } catch { /* transient — next tick retries */ } finally { busyRef.current = false }
+    } catch { /* transient — next tick retries */ } finally {
+      busyRef.current = false
+      if (targetRef.current === target) setLoading(false)
+    }
   }, [markRead, myId, myRole])
+
+  // remember what is on screen so the conversation re-opens instantly
+  useEffect(() => {
+    const t = targetRef.current
+    if (!t) return
+    const cache = cacheRef.current
+    cache.delete(keyOf(t))
+    cache.set(keyOf(t), { messages: messages.slice(-150), lastId: lastIdRef.current })
+    if (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value)
+  }, [messages])
 
   const startPolling = useCallback((target) => {
     clearInterval(pollRef.current)
@@ -73,16 +90,23 @@ export function useChat(myId, myRole) {
   }, [loadMessages])
 
   const selectContact = useCallback((target) => {
+    const cached = cacheRef.current.get(keyOf(target))
     targetRef.current = target
-    setCurrent(target); setMessages([]); setPending([])
-    lastIdRef.current = 0; busyRef.current = false
+    setCurrent(target); setPending([])
+    if (cached && cached.messages.length) {
+      setMessages(cached.messages); lastIdRef.current = cached.lastId; setLoading(false)
+      markRead(target)
+    } else {
+      setMessages([]); lastIdRef.current = 0; setLoading(true)
+    }
+    busyRef.current = false
     loadMessages(target)
     startPolling(target)
-  }, [loadMessages, startPolling])
+  }, [loadMessages, startPolling, markRead])
 
   const closeConversation = useCallback(() => {
     clearInterval(pollRef.current); targetRef.current = null
-    setCurrent(null); setMessages([]); setPending([])
+    setCurrent(null); setMessages([]); setPending([]); setLoading(false)
   }, [])
 
   // catch up the instant the tab becomes visible again / the network returns
@@ -154,5 +178,5 @@ export function useChat(myId, myRole) {
     }),
   })), [pending])
 
-  return { current, messages, pending: pendingView, sending, selectContact, closeConversation, send, retry, discard }
+  return { current, messages, pending: pendingView, sending, loading, selectContact, closeConversation, send, retry, discard }
 }

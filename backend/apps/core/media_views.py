@@ -1,20 +1,19 @@
 """
 Serves uploaded pictures (see media_storage.py) with anti-"save it" protections.
 
-What this does — and what it cannot do
   * Opening a picture's address directly in a tab / iframe / download link is refused (Sec-Fetch-Dest) — the picture
-    only loads inside the website's own pages.
-  * Private-ish folders (leader photos, testimonial photos, avatars, old chat files) also refuse to load from OTHER
-    websites (hot-linking) by checking the Referer against the site's own origins.
-  * Files are sent `inline` with nosniff + a locked-down CSP, and are never listable.
-  * Names are random (sanitised re-encode in image_utils) so addresses cannot be guessed; EXIF/GPS data is stripped.
-No web page can stop a screenshot — anything a browser can display, a person can capture. This blocks casual saving,
-direct links and hot-linking, which is the realistic protection.
+    only loads inside web pages.
+  * Private-ish folders (leader / testimonial photos, avatars, old chat files) also refuse to load when embedded by a
+    DIFFERENT website (hot-linking): the Referer must be this API, the React site (FRONTEND_URL), PUBLIC_BASE_URL or an
+    origin in CORS_ALLOWED_ORIGINS. A missing Referer is allowed (privacy tools strip it).
+  * Sent `inline`, nosniff, locked-down CSP, never listable; names are random and EXIF/GPS data is stripped on upload.
+No web page can stop a screenshot — this blocks casual saving, direct links and hot-linking.
 """
 import mimetypes
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.db import DatabaseError
 from django.http import Http404, HttpResponse, HttpResponseForbidden
 from django.utils._os import safe_join
 from django.views.decorators.http import require_safe
@@ -28,9 +27,9 @@ def _origin(url):
     return f'{p.scheme}://{p.netloc}'.lower() if p.scheme and p.netloc else ''
 
 
-def _allowed_origins():
+def _allowed_origins(request):
     urls = list(getattr(settings, 'CORS_ALLOWED_ORIGINS', []) or [])
-    urls += [getattr(settings, 'FRONTEND_URL', ''), getattr(settings, 'PUBLIC_BASE_URL', '')]
+    urls += [getattr(settings, 'FRONTEND_URL', ''), getattr(settings, 'PUBLIC_BASE_URL', ''), request.build_absolute_uri('/')]
     out = {_origin(u) for u in urls if u}
     if settings.DEBUG:
         out |= {'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:8000', 'http://127.0.0.1:8000'}
@@ -47,14 +46,17 @@ def serve_media(request, path):
         return HttpResponseForbidden('This picture can only be viewed on the website.')
     if path.startswith(PROTECTED_PREFIXES):
         referer = request.headers.get('Referer', '')
-        if referer and _origin(referer) not in _allowed_origins():
+        if referer and _origin(referer) not in _allowed_origins(request):
             return HttpResponseForbidden('Not available from other websites.')
 
     from apps.core.models import MediaFile
-    row = MediaFile.objects.filter(name=path).first()
+    try:
+        row = MediaFile.objects.filter(name=path).first()
+    except DatabaseError:
+        row = None
     if row is not None:
         data, ctype = bytes(row.data), row.content_type or mimetypes.guess_type(path)[0]
-    else:  # picture uploaded before the database storage existed and still on disk
+    else:  # uploaded before database storage existed (or while it was unavailable) and still on disk
         try:
             with open(safe_join(settings.MEDIA_ROOT, path), 'rb') as fh:
                 data = fh.read()

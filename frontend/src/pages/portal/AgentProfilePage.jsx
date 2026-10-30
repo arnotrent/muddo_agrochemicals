@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { agentsApi } from '../../api/services'
 import { useAuth } from '../../context/AuthContext'
+import ImageDropzone from '../../components/ImageDropzone'
+import Avatar from '../../components/Avatar'
 import Icon from '../../components/Icon'
+import { errText } from '../../utils/apiError'
 
 export default function AgentProfilePage() {
   const { refreshMe } = useAuth()
@@ -12,46 +15,39 @@ export default function AgentProfilePage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    agentsApi.me().then(({ data }) => {
-      setProfile(data)
-      setDisplayName(data.display_name || '')
-    })
+    agentsApi.me().then(({ data }) => { setProfile(data); setDisplayName(data.display_name || '') })
+      .catch((err) => setFlash({ ok: false, msg: errText(err, 'Could not load your profile.') }))
   }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setSaving(true)
-    setFlash(null)
+    setSaving(true); setFlash(null)
     try {
       const formData = new FormData()
       formData.append('display_name', displayName)
       if (avatarFile) formData.append('avatar', avatarFile)
       const { data } = await agentsApi.updateMe(formData)
-      setProfile(data)
+      setProfile(data); setAvatarFile(null)
       setFlash({ ok: true, msg: 'Profile updated!' })
       refreshMe()
     } catch (err) {
-      setFlash({ ok: false, msg: err.response?.data?.detail || 'Could not save changes.' })
-    } finally {
-      setSaving(false)
-    }
+      setFlash({ ok: false, msg: errText(err, 'Could not save changes.') })
+    } finally { setSaving(false) }
   }
 
-  if (!profile) return null
+  if (!profile) return flash ? <div role="alert" className="p-3.5 rounded-lg text-sm bg-accent-red/10 text-accent-red">{flash.msg}</div> : null
 
   return (
     <div>
       <h1 className="text-xl font-bold text-text-1 mb-6 flex items-center gap-2"><Icon name="user" />My Profile</h1>
       {flash && (
-        <div className={`mb-5 p-3.5 rounded-lg text-sm flex items-center gap-2 ${flash.ok ? 'bg-accent-green/10 text-accent-green' : 'bg-accent-red/10 text-accent-red'}`}>
+        <div role="status" className={`mb-5 p-3.5 rounded-lg text-sm flex items-center gap-2 ${flash.ok ? 'bg-accent-green/10 text-accent-green' : 'bg-accent-red/10 text-accent-red'}`}>
           <Icon name={flash.ok ? 'check-circle' : 'exclamation-circle'} />{flash.msg}
         </div>
       )}
       <div className="grid lg:grid-cols-[280px_1fr] gap-5">
         <div className="bg-bg-card border border-border rounded-card p-7.5 text-center self-start">
-          <div className="w-27.5 h-27.5 rounded-full mx-auto mb-4 overflow-hidden bg-accent-blue flex items-center justify-center text-white text-4xl font-bold">
-            {profile.avatar_url ? <img src={profile.avatar_url} className="w-full h-full object-cover" /> : profile.name?.[0]?.toUpperCase()}
-          </div>
+          <Avatar src={profile.avatar_url} name={profile.name} className="w-27.5 h-27.5 mx-auto mb-4" textClass="text-4xl" alt="" />
           <div className="font-extrabold text-text-1">{profile.name}</div>
           {profile.display_name && <div className="text-xs text-text-3 mt-1">originally <strong>{profile.original_name}</strong></div>}
           <div className="text-sm text-text-3 mt-1.5">Field Agent {profile.region && `· ${profile.region}`}</div>
@@ -66,7 +62,7 @@ export default function AgentProfilePage() {
             </div>
             <div className="mb-5">
               <label className="text-sm font-semibold text-text-2 block mb-1.5">Profile Photo</label>
-              <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] || null)} className="w-full text-sm" />
+              <ImageDropzone shape="round" file={avatarFile} onFile={setAvatarFile} existingUrl={profile.avatar_url} label="Add a profile photo" />
             </div>
             <button disabled={saving} className="px-5 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm flex items-center gap-2 disabled:opacity-60">
               <Icon name="save" />{saving ? 'Saving…' : 'Save Changes'}

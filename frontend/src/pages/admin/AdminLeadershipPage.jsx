@@ -3,6 +3,7 @@ import api, { leadershipApi } from '../../api/services'
 import Modal from '../../components/Modal'
 import ImageDropzone from '../../components/ImageDropzone'
 import Icon from '../../components/Icon'
+import { errText } from '../../utils/apiError'
 
 const EMPTY = { name: '', title: '', bio: '', greeting: '', order: 0, active: true }
 const inputCls = 'w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 outline-none focus:border-accent-blue'
@@ -41,8 +42,7 @@ export default function AdminLeadershipPage() {
       setFlash({ ok: true, msg: modal.id ? 'Leader updated.' : 'Leader added.' })
       close(); load()
     } catch (err) {
-      const errs = err.response?.data?.errors
-      setFlash({ ok: false, msg: (errs && Object.values(errs).flat()[0]) || err.response?.data?.detail || 'Could not save.' })
+      setFlash({ ok: false, msg: errText(err, 'Could not save the leader.') })
     } finally { setSaving(false) }
   }
 

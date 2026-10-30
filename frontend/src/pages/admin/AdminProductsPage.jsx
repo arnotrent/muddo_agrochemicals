@@ -3,6 +3,7 @@ import { productsApi } from '../../api/services'
 import Modal from '../../components/Modal'
 import ImageDropzone from '../../components/ImageDropzone'
 import Icon from '../../components/Icon'
+import { errText } from '../../utils/apiError'
 
 const CATEGORIES = [
   ['pesticide', 'Pesticide'], ['herbicide', 'Herbicide'], ['fungicide', 'Fungicide'], ['other', 'Other / Agri Input'],
@@ -75,8 +76,7 @@ export default function AdminProductsPage() {
       setFlash({ ok: true, msg: `"${form.name}" ${isEdit ? 'updated' : 'added'}!` })
       close(); load()
     } catch (err) {
-      const errs = err.response?.data?.errors
-      setFlash({ ok: false, msg: (errs && Object.values(errs).flat()[0]) || err.response?.data?.detail || 'Could not save the product.' })
+      setFlash({ ok: false, msg: errText(err, 'Could not save the product.') })
     } finally { setSaving(false) }
   }
 

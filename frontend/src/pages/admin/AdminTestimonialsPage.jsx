@@ -4,6 +4,7 @@ import { Stars, StarPicker } from '../../components/StarRating'
 import Modal from '../../components/Modal'
 import ImageDropzone from '../../components/ImageDropzone'
 import Icon from '../../components/Icon'
+import { errText } from '../../utils/apiError'
 
 const TABS = [['pending', 'Pending'], ['approved', 'Approved'], ['hidden', 'Hidden'], ['rejected', 'Rejected'], ['', 'All']]
 const BADGE = { approved: 'bg-accent-green/15 text-accent-green', rejected: 'bg-accent-red/15 text-accent-red', hidden: 'bg-bg-alt text-text-3', pending: 'bg-bg-alt text-accent-blue' }
@@ -44,8 +45,7 @@ export default function AdminTestimonialsPage() {
       if (editor.id) await testimonialsApi.adminUpdate(editor.id, fd); else await testimonialsApi.adminCreate(fd)
       setFlash({ ok: true, msg: editor.id ? 'Testimonial updated.' : 'Testimonial added.' }); close(); load()
     } catch (err) {
-      const errs = err.response?.data?.errors
-      setFlash({ ok: false, msg: (errs && Object.values(errs).flat()[0]) || err.response?.data?.detail || 'Could not save.' })
+      setFlash({ ok: false, msg: errText(err, 'Could not save the testimonial.') })
     } finally { setBusy(null) }
   }
   const small = 'px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 transition-transform hover:-translate-y-0.5'

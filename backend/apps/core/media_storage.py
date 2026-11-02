@@ -15,7 +15,7 @@ from urllib.parse import quote
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.files.storage import FileSystemStorage, Storage
-from django.db import DatabaseError
+from django.db import Error as DbError
 
 logger = logging.getLogger('django.request')
 
@@ -32,7 +32,7 @@ class DatabaseMediaStorage(Storage):
     def _open(self, name, mode='rb'):
         try:
             row = self._model().objects.filter(name=name).first()
-        except DatabaseError:
+        except DbError:
             logger.exception('MediaFile lookup failed for %s — is the core migration applied?', name)
             row = None
         if row is not None:
@@ -48,7 +48,7 @@ class DatabaseMediaStorage(Storage):
         try:
             self._model().objects.update_or_create(
                 name=name, defaults={'data': data, 'size': len(data), 'content_type': ctype})
-        except DatabaseError:
+        except Exception:  # noqa: BLE001 — never fail an upload because the DB side is unhappy
             logger.exception('Could not save %s to the database (run "python manage.py migrate"). '
                              'Falling back to the server disk — this file will NOT survive a redeploy.', name)
             return self._disk()._save(name, ContentFile(data))
@@ -58,14 +58,14 @@ class DatabaseMediaStorage(Storage):
         try:
             if self._model().objects.filter(name=name).exists():
                 return True
-        except DatabaseError:
+        except DbError:
             pass
         return self._disk().exists(name)
 
     def delete(self, name):
         try:
             self._model().objects.filter(name=name).delete()
-        except DatabaseError:
+        except DbError:
             logger.exception('Could not delete %s from the database', name)
         try:
             self._disk().delete(name)
@@ -75,7 +75,7 @@ class DatabaseMediaStorage(Storage):
     def size(self, name):
         try:
             n = self._model().objects.filter(name=name).values_list('size', flat=True).first()
-        except DatabaseError:
+        except DbError:
             n = None
         return n if n is not None else self._disk().size(name)
 

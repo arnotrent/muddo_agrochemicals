@@ -7,6 +7,13 @@ import Icon from '../../components/Icon'
 // approved = shown on the site · hidden = approved earlier but kept out of sight · rejected = declined · pending = awaiting a decision
 const TABS = [['pending', 'Pending'], ['approved', 'Approved'], ['hidden', 'Hidden'], ['rejected', 'Rejected'], ['', 'All']]
 const BADGE = { approved: 'bg-accent-green/15 text-accent-green', rejected: 'bg-accent-red/15 text-accent-red', hidden: 'bg-bg-alt text-text-3', pending: 'bg-bg-alt text-accent-blue' }
+const loadErr = (err) => {
+  const s = err.response?.status
+  const url = err.config?.url || '/admin/reviews/'
+  if (s === 404) return `Could not load reviews: the server has no ${url} (404). Redeploy the backend and make sure products/urls_api.py includes the admin reviews routes.`
+  if (s === 401 || s === 403) return `Could not load reviews: you are not signed in as an administrator (${s}).`
+  return `Could not load reviews (${s || 'no connection'} on ${url}).`
+}
 const cls = 'w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 outline-none focus:border-accent-blue'
 
 export default function AdminReviewsPage() {
@@ -18,7 +25,7 @@ export default function AdminReviewsPage() {
   const [editor, setEditor] = useState(null)
 
   const load = () => {
-    reviewsApi.adminList({ status: tab || undefined, page_size: 200 }).then(({ data }) => setRows(data.results || data)).catch(() => setError('Could not load reviews.'))
+    reviewsApi.adminList({ status: tab || undefined, page_size: 200 }).then(({ data }) => setRows(data.results || data)).catch((err) => setError(loadErr(err)))
     reviewsApi.adminList({ page_size: 500 }).then(({ data }) => { const c = {}; (data.results || data).forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); setCounts(c) }).catch(() => {})
   }
   useEffect(() => { load() }, [tab]) // eslint-disable-line

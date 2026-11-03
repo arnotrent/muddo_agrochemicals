@@ -1,22 +1,28 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import L from 'leaflet'
 import { distributorsApi } from '../../api/services'
-import { gmapsPlace, gmapsDirections, gmapsEmbed } from '../../utils/geocode'
+import { placeUrl, directionsUrl, embedUrl, osmUrl, hasCoords } from '../../utils/mapLinks'
+import { makePin } from '../../utils/mapPin'
 import PageHero from '../../components/PageHero'
 import Icon from '../../components/Icon'
 
-// Leaflet's default marker icons reference bundled image paths that Vite doesn't resolve —
-// replaced with a CSS-drawn pin (no external image needed). The selected outlet turns red.
-const pin = (active) => new L.DivIcon({
-  className: '',
-  html: `<div style="width:${active ? 34 : 28}px;height:${active ? 34 : 28}px;border-radius:50% 50% 50% 0;background:${active ? '#EF4444' : '#38BDF8'};transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3)"></div>`,
-  iconSize: [28, 28], iconAnchor: [14, 28],
-})
+const PIN = makePin('#38BDF8')
+const PIN_ACTIVE = makePin('#EF4444', 1.2)
 
+// Frames every outlet that matches the current filters (so what you filter is what you see on the map).
+function FitAll({ points }) {
+  const map = useMap()
+  const key = points.map((p) => p.join(',')).join('|')
+  useEffect(() => {
+    if (!points.length) return
+    if (points.length === 1) map.setView(points[0], 13)
+    else map.fitBounds(points, { padding: [40, 40], maxZoom: 12 })
+  }, [key, map]) // eslint-disable-line
+  return null
+}
 function FlyTo({ position }) {
   const map = useMap()
-  useEffect(() => { if (position) map.setView(position, 14, { animate: true }) }, [position, map])
+  useEffect(() => { if (position) map.setView(position, 16, { animate: true }) }, [position, map])
   return null
 }
 
@@ -29,9 +35,12 @@ export default function DistributorsPage() {
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const detailRef = useRef(null)
 
-  useEffect(() => { distributorsApi.list({ page_size: 300 }).then(({ data }) => setAll(data.results || data)).finally(() => setLoading(false)) }, [])
+  useEffect(() => {
+    distributorsApi.list({ page_size: 300 }).then(({ data }) => setAll(data.results || data)).catch(() => setLoadError(true)).finally(() => setLoading(false))
+  }, [])
 
   const countries = useMemo(() => [...new Set(all.map((d) => d.country))].sort(), [all])
   const regions = useMemo(() => [...new Set(all.filter((d) => !country || d.country === country).map((d) => d.region))].sort(), [all, country])
@@ -56,19 +65,21 @@ export default function DistributorsPage() {
 
       <section className="py-12">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
+          {loadError && <div role="alert" className="mb-6 p-4 rounded-lg bg-accent-red/10 text-accent-red text-sm">We couldn’t load the outlets right now. Please refresh, or call us and we’ll direct you.</div>}
           <div className="h-[420px] rounded-2xl overflow-hidden border border-border mb-8 relative z-0">
-            <MapContainer center={[1.3733, 32.2903]} zoom={6.4} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
+            <MapContainer center={[1.3733, 32.2903]} zoom={6} scrollWheelZoom={false} style={{ height: '100%', width: '100%' }}>
               <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-              {filtered.map((d) => d.lat && d.lng && (
-                <Marker key={d.id} position={[d.lat, d.lng]} icon={pin(d.id === selected)} eventHandlers={{ click: () => select(d.id) }}>
+              {filtered.filter(hasCoords).map((d) => (
+                <Marker key={d.id} position={[Number(d.lat), Number(d.lng)]} icon={d.id === selected ? PIN_ACTIVE : PIN} eventHandlers={{ click: () => select(d.id) }}>
                   <Popup>
                     <b>{d.name}</b><br />{place(d)}
                     {d.phone && <><br /><a href={`tel:${d.phone}`}>{d.phone}</a></>}
-                    <br /><a href={gmapsDirections(d.lat, d.lng)} target="_blank" rel="noreferrer">Directions ↗</a>
+                    <br /><a href={placeUrl(d)} target="_blank" rel="noreferrer">View on Google Maps ↗</a>
+                    {' · '}<a href={directionsUrl(d)} target="_blank" rel="noreferrer">Directions ↗</a>
                   </Popup>
                 </Marker>
               ))}
-              {sel && <FlyTo position={[sel.lat, sel.lng]} />}
+              {sel && hasCoords(sel) ? <FlyTo position={[Number(sel.lat), Number(sel.lng)]} /> : <FitAll points={filtered.filter(hasCoords).map((d) => [Number(d.lat), Number(d.lng)])} />}
             </MapContainer>
           </div>
 
@@ -95,15 +106,21 @@ export default function DistributorsPage() {
                   </div>
                   <p className="text-sm text-text-3 mt-1 mb-4">{place(sel)}</p>
                   {sel.address && <p className="text-sm text-text-2 mb-2 flex gap-2"><Icon name="map-marker-alt" className="text-accent-blue mt-0.5" />{sel.address}</p>}
+                  {hasCoords(sel) && <p className="text-xs text-text-4 mb-2 font-mono" title="Exact location set by the administrator">Grid reference: {Number(sel.lat).toFixed(6)}, {Number(sel.lng).toFixed(6)}</p>}
                   {sel.location_details && <p className="text-sm text-text-2 mb-2 flex gap-2 leading-relaxed"><Icon name="info-circle" className="text-accent-blue mt-0.5" />{sel.location_details}</p>}
                   {sel.phone && <p className="text-sm font-semibold mb-2 flex gap-2"><Icon name="phone" className="text-accent-blue mt-0.5" /><a href={`tel:${sel.phone}`} className="text-accent-blue">{sel.phone}</a></p>}
                   {sel.email && <p className="text-sm mb-2 flex gap-2"><Icon name="envelope" className="text-accent-blue mt-0.5" /><a href={`mailto:${sel.email}`} className="text-accent-blue break-all">{sel.email}</a></p>}
-                  <div className="flex gap-2.5 flex-wrap mt-5">
-                    <a href={gmapsDirections(sel.lat, sel.lng)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm"><Icon name="directions" />Get directions</a>
-                    <a href={gmapsPlace(sel.lat, sel.lng)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-btn border border-border text-text-2 font-bold text-sm"><Icon name="map-marker-alt" />Open in Google Maps</a>
-                  </div>
+                  {hasCoords(sel) ? (
+                    <div className="flex gap-2.5 flex-wrap mt-5">
+                      <a href={directionsUrl(sel)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm"><Icon name="directions" />Get directions</a>
+                      <a href={placeUrl(sel)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-btn border border-border text-text-2 font-bold text-sm"><Icon name="map-marker-alt" />Open in Google Maps</a>
+                      <a href={osmUrl(sel)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-btn border border-border text-text-3 font-bold text-sm">OpenStreetMap</a>
+                    </div>
+                  ) : <p className="mt-5 text-sm text-text-3">The exact map position for this outlet is being confirmed — please call for directions.</p>}
                 </div>
-                <iframe title={`${sel.name} on Google Maps`} src={gmapsEmbed(sel.lat, sel.lng)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen className="w-full h-[320px] lg:h-full min-h-[300px] border-0 bg-bg-alt" />
+                {hasCoords(sel)
+                  ? <iframe key={sel.id} title={`${sel.name} on Google Maps`} src={embedUrl(sel)} loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen className="w-full h-[320px] lg:h-full min-h-[300px] border-0 bg-bg-alt" />
+                  : <div className="min-h-[200px] bg-bg-alt" />}
               </div>
             )}
           </div>
@@ -126,7 +143,7 @@ export default function DistributorsPage() {
                 {d.phone && <p className="text-sm font-semibold mb-3 flex gap-1.5"><Icon name="phone" className="text-accent-blue mt-0.5" /><a href={`tel:${d.phone}`} className="text-accent-blue">{d.phone}</a></p>}
                 <div className="flex gap-2 pt-3 border-t border-border">
                   <button onClick={() => select(d.id)} className="flex-1 text-center py-2 rounded-btn bg-bg-alt text-text-2 text-xs font-bold">View location</button>
-                  <a href={gmapsDirections(d.lat, d.lng)} target="_blank" rel="noreferrer" className="flex-1 text-center py-2 rounded-btn bg-accent-blue text-white text-xs font-bold">Directions</a>
+                  {hasCoords(d) && <a href={directionsUrl(d)} target="_blank" rel="noreferrer" className="flex-1 text-center py-2 rounded-btn bg-accent-blue text-white text-xs font-bold">Directions</a>}
                 </div>
               </article>
             ))}

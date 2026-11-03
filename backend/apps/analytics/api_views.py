@@ -19,6 +19,14 @@ from apps.messaging.models import Message
 from apps.distributors.models import Distributor
 
 
+def _needs_restock():
+    """
+    Products that are genuinely at / below their reorder level. A FEATURED product is "not yet in stock" (a preview of
+    something still being finalised) — it is never out of stock or low, so it never raises a stock alert.
+    """
+    return Inventory.objects.filter(stock_qty__lte=F('reorder_level')).exclude(product__is_featured=True)
+
+
 @api_view(['GET'])
 @permission_classes([IsAdmin])
 def admin_dashboard_stats_view(request):
@@ -32,7 +40,8 @@ def admin_dashboard_stats_view(request):
         'active_agents': Agent.objects.filter(status='active').count(),
         'pending_supply': SupplyRequest.objects.filter(status='pending').count(),
         'unread_msgs': Message.objects.filter(receiver_role='admin', read=False).count(),
-        'low_stock': Inventory.objects.filter(stock_qty__lte=F('reorder_level')).count(),
+        'low_stock': _needs_restock().count(),
+        'not_yet_in_stock': Product.objects.filter(is_featured=True).count(),
     }
 
     from apps.core.serializers import ContactRequestAdminSerializer
@@ -46,8 +55,7 @@ def admin_dashboard_stats_view(request):
         'agents': AgentSerializer(Agent.objects.select_related('user').order_by('-last_seen')[:10], many=True).data,
         'recent_supply': SupplyRequestSerializer(SupplyRequest.objects.select_related('agent__user').order_by('-created_at')[:5], many=True).data,
         'low_stock_items': InventorySerializer(
-            Inventory.objects.filter(stock_qty__lte=F('reorder_level')).select_related('product').order_by('stock_qty')[:5],
-            many=True).data,
+            _needs_restock().select_related('product').order_by('stock_qty')[:5], many=True).data,
     })
 
 

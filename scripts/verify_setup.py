@@ -62,7 +62,7 @@ def fix_selftest_route():
 
 
 def fix_run_scripts():
-    for s in ('apply_update6.py', 'apply_update7.py', 'apply_update8.py'):
+    for s in ('apply_update6.py', 'apply_update7.py', 'apply_update8.py', 'apply_update10.py'):
         if (ROOT / 'scripts' / s).exists():
             print(f'\n=== running {s} ===')
             subprocess.call([sys.executable, str(ROOT / 'scripts' / s)])
@@ -95,6 +95,11 @@ CHECKS = [
     ('testimonials migration for "hidden"', lambda: any("'hidden'" in m for m in migs('testimonials')), fix_run_scripts),
     ('media_storage.py / media_views.py present', lambda: exists('backend/apps/core/media_storage.py') and exists('backend/apps/core/media_views.py'), None),
     ('Image picker + modal components present', lambda: exists('frontend/src/components/ImageDropzone.jsx') and exists('frontend/src/components/Modal.jsx'), None),
+    ('Distributor Google place id (model)', lambda: has('backend/apps/distributors/models.py', 'place_id'), fix_run_scripts),
+    ('Distributor place id (serializer)', lambda: has('backend/apps/distributors/serializers.py', "'place_id'"), fix_run_scripts),
+    ('Distributor place id migration', lambda: any('place_id' in m for m in migs('distributors')), fix_run_scripts),
+    ('Featured products never raise stock alerts', lambda: has('backend/apps/analytics/api_views.py', 'is_featured'), None),
+    ('Google Maps picker present', lambda: exists('frontend/src/components/GooglePlacePicker.jsx'), None),
     ('Exact-tip map pin present', lambda: exists('frontend/src/utils/mapPin.js') and has('frontend/src/components/LocationPicker.jsx', 'makePin'), fix_run_scripts),
 ]
 

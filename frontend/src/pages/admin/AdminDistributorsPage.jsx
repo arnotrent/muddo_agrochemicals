@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { distributorsApi } from '../../api/services'
 import { COUNTRIES, REGION_LABEL, DISTRICT_LABEL, regionsOf, districtsOf } from '../../data/geo'
-import { gmapsPlace } from '../../utils/geocode'
-import LocationPicker from '../../components/LocationPicker'
+import { detectArea } from '../../utils/geoMatch'
+import { placeUrl, hasCoords } from '../../utils/mapLinks'
+import { errText } from '../../utils/apiError'
+import LocationMapPicker from '../../components/LocationMapPicker'
 import Icon from '../../components/Icon'
 
-const EMPTY = { name: '', country: 'Uganda', region: '', district: '', town: '', address: '', location_details: '', phone: '', email: '', lat: NaN, lng: NaN }
+const EMPTY = { name: '', country: 'Uganda', region: '', district: '', town: '', address: '', location_details: '', phone: '', email: '', lat: NaN, lng: NaN, place_id: '' }
 const OTHER = '__other__'
 const inputCls = 'w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 outline-none focus:border-accent-blue'
 
@@ -39,6 +41,27 @@ function Cascade({ label, value, options, onChange, placeholder, required, disab
   )
 }
 
+const clean = (s = '') => s.replace(/\b(Region|District|County|Province|State|City|Municipality|Division)\b/gi, '').replace(/\s+/g, ' ').trim()
+
+/** Turns a Google pick (components + address) into form fields: country, region, district, town, street address. */
+function areaFromGoogle(info, currentCountry) {
+  const comps = info.components || []
+  const get = (...types) => { for (const t of types) { const c = comps.find((x) => x.types.includes(t)); if (c) return c.long } return '' }
+  let country = get('country')
+  if (/congo/i.test(country) && /democratic|kinshasa/i.test(country)) country = 'DR Congo'
+  if (!COUNTRIES.includes(country)) country = country ? 'Other' : currentCountry
+  const town = get('locality', 'sublocality_level_1', 'sublocality', 'administrative_area_level_3', 'neighborhood')
+  const a1 = get('administrative_area_level_1'); const a2 = get('administrative_area_level_2')
+  const det = detectArea(country, [info.address, town, a2, a1].filter(Boolean).join(', '))
+  return {
+    country,
+    region: det?.region || clean(a1),
+    district: det?.district || clean(a2) || clean(town),
+    town: clean(town),
+    address: info.address || '',
+  }
+}
+
 export default function AdminDistributorsPage() {
   const [distributors, setDistributors] = useState([])
   const [form, setForm] = useState(EMPTY)
@@ -48,6 +71,7 @@ export default function AdminDistributorsPage() {
   const [saving, setSaving] = useState(false)
   const [q, setQ] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
+  const [pickedName, setPickedName] = useState('')
 
   const load = () => distributorsApi.list({ page_size: 300 }).then(({ data }) => setDistributors(data.results || data))
   useEffect(() => { load() }, [])
@@ -56,34 +80,45 @@ export default function AdminDistributorsPage() {
   const regions = regionsOf(form.country)
   const districts = districtsOf(form.country, form.region)
   const hint = [form.town, form.district, form.region, form.country].filter(Boolean).join(', ')
-  const hasPin = Number.isFinite(form.lat) && Number.isFinite(form.lng) && !(form.lat === 0 && form.lng === 0)
+  const hasPin = hasCoords(form)
 
-  // Pin found a place: fill ONLY the fields still empty (never overwrite what the admin chose).
+  // ── Google pick: a searched place OVERWRITES the area fields; a clicked/dragged pin only fills what is still empty ──
+  const onGooglePick = (info) => {
+    setPickedName(info.source === 'search' ? (info.name || '') : '')
+    setForm((f) => {
+      const a = areaFromGoogle(info, f.country)
+      const base = { ...f, lat: info.lat, lng: info.lng, place_id: info.placeId || '' }
+      if (info.source === 'search') {
+        return { ...base, country: a.country, region: a.region || f.region, district: a.district || f.district, town: a.town || f.town, address: a.address || f.address, name: f.name || info.name || '' }
+      }
+      return { ...base, country: f.country || a.country, region: f.region || a.region, district: f.district || a.district, town: f.town || a.town, address: f.address || a.address }
+    })
+  }
+  // OpenStreetMap fallback picker callbacks
   const fillBlanks = (a) => setForm((f) => ({ ...f, region: f.region || a.region || '', district: f.district || a.district || '', town: f.town || a.town || '' }))
-  // Admin accepted the detected area: overwrite region + district.
   const useDetected = (a) => setForm((f) => ({ ...f, region: a.region || f.region, district: a.district || f.district, town: f.town || a.town || '' }))
 
-  const close = () => { setOpen(false); setEditing(null); setForm(EMPTY) }
-  const openNew = () => { setFlash(null); setEditing(null); setForm(EMPTY); setOpen(true) }
+  const close = () => { setOpen(false); setEditing(null); setForm(EMPTY); setPickedName('') }
+  const openNew = () => { setFlash(null); setEditing(null); setForm(EMPTY); setPickedName(''); setOpen(true) }
 
   const submit = async (e) => {
     e.preventDefault()
     setFlash(null)
-    if (!hasPin) return setFlash({ ok: false, msg: 'Please set the outlet\u2019s exact spot on the map (click it, search a place, or enter coordinates).' })
+    if (!hasPin) return setFlash({ ok: false, msg: 'Please set the outlet’s exact spot on the map first (search a place, click the map, or enter the grid references).' })
     setSaving(true)
     try {
       if (editing) await distributorsApi.update(editing, form); else await distributorsApi.create(form)
-      setFlash({ ok: true, msg: editing ? 'Outlet updated.' : 'Outlet added.' })
+      setFlash({ ok: true, msg: editing ? 'Outlet updated — visitors now see the new location.' : 'Outlet added — it is now on the Find a Store map.' })
       close(); load()
     } catch (err) {
       const errs = err.response?.data?.errors || {}
-      setFlash({ ok: false, msg: errs.lat?.[0] || errs.non_field_errors?.[0] || Object.values(errs).flat()[0] || err.response?.data?.detail || 'Could not save outlet.' })
+      setFlash({ ok: false, msg: errs.lat?.[0] || errs.non_field_errors?.[0] || errText(err, 'Could not save outlet.') })
     } finally { setSaving(false) }
   }
 
   const startEdit = (d) => {
-    setEditing(d.id); setFlash(null)
-    setForm({ name: d.name, country: d.country, region: d.region, district: d.district, town: d.town || '', address: d.address || '', location_details: d.location_details || '', phone: d.phone || '', email: d.email || '', lat: d.lat, lng: d.lng })
+    setEditing(d.id); setFlash(null); setPickedName('')
+    setForm({ name: d.name, country: d.country, region: d.region, district: d.district, town: d.town || '', address: d.address || '', location_details: d.location_details || '', phone: d.phone || '', email: d.email || '', lat: d.lat, lng: d.lng, place_id: d.place_id || '' })
     setOpen(true)
     setTimeout(() => document.getElementById('distributor-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
@@ -110,14 +145,14 @@ export default function AdminDistributorsPage() {
             <button type="button" onClick={close} aria-label="Close form" className="text-text-3"><Icon name="times" size="1.1rem" /></button>
           </div>
           <div className="p-5 grid lg:grid-cols-2 gap-x-8">
-            <div>
+            <div className="order-2 lg:order-1">
               <Field label="Outlet name" required><input required value={form.name} onChange={(e) => set('name', e.target.value)} className={inputCls} /></Field>
               <Field label="Country" required>
-                <select value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value, region: '', district: '', town: '', lat: NaN, lng: NaN }))} className={inputCls}>{COUNTRIES.map((c) => <option key={c}>{c}</option>)}</select>
+                <select value={form.country} onChange={(e) => setForm((f) => ({ ...f, country: e.target.value, region: '', district: '', town: '' }))} className={inputCls}>{COUNTRIES.map((c) => <option key={c}>{c}</option>)}</select>
               </Field>
               <Cascade label={REGION_LABEL[form.country] || 'Region'} value={form.region} options={regions} required onChange={(v) => setForm((f) => ({ ...f, region: v, district: '' }))} placeholder="e.g. Central" />
               <Cascade label={DISTRICT_LABEL[form.country] || 'District'} value={form.district} options={districts} required disabled={!form.region} onChange={(v) => set('district', v)} placeholder={form.region ? 'e.g. Kampala' : 'Choose the region first'} />
-              <Field label="City / town / trading centre" hint="Optional — the map zooms here as you type."><input value={form.town} onChange={(e) => set('town', e.target.value)} placeholder="e.g. Katooke" className={inputCls} /></Field>
+              <Field label="City / town / trading centre" hint="Filled in automatically from the map; you can correct it."><input value={form.town} onChange={(e) => set('town', e.target.value)} placeholder="e.g. Katooke" className={inputCls} /></Field>
               <Field label="Street address"><input value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="e.g. Main Street, Plot 12" className={inputCls} /></Field>
               <Field label="Location description" hint="Optional — landmarks and directions customers will see, e.g. “Opposite Katooke market, next to the mosque.”">
                 <textarea rows={3} maxLength={1000} value={form.location_details} onChange={(e) => set('location_details', e.target.value)} className={`${inputCls} resize-y`} /></Field>
@@ -126,11 +161,18 @@ export default function AdminDistributorsPage() {
                 <Field label="Email"><input type="email" value={form.email} onChange={(e) => set('email', e.target.value)} className={inputCls} /></Field>
               </div>
             </div>
-            <div>
-              <Field label="Exact location on the map" required hint="The map zooms to the area you describe and the pin is locked to it. Start typing a place for suggestions, then click the map or drag the pin onto the shop itself.">
-                <LocationPicker lat={form.lat} lng={form.lng} country={form.country} region={form.region} district={form.district} town={form.town} hint={hint}
-                  onChange={(la, ln) => setForm((f) => ({ ...f, lat: la, lng: ln }))} onAreaDetected={fillBlanks} onUseDetected={useDetected} />
+            <div className="order-1 lg:order-2">
+              <Field label="Exact location on the map" required hint="Search the shop or address with Google, or click / drag the pin. What you set here is exactly what visitors see on the Find a Store page.">
+                <LocationMapPicker lat={form.lat} lng={form.lng} country={form.country} region={form.region} district={form.district} town={form.town} hint={hint}
+                  onGooglePick={onGooglePick} onChange={(la, ln) => setForm((f) => ({ ...f, lat: la, lng: ln, place_id: '' }))} onAreaDetected={fillBlanks} onUseDetected={useDetected} />
               </Field>
+              {hasPin && (
+                <div className="p-3 rounded-lg bg-bg-alt text-xs text-text-2 space-y-1 -mt-1.5 mb-3">
+                  <div><strong>Grid reference:</strong> <span className="font-mono">{Number(form.lat).toFixed(6)}, {Number(form.lng).toFixed(6)}</span></div>
+                  {(pickedName || form.place_id) && <div className="flex gap-1.5"><Icon name="check-circle" className="text-accent-green mt-0.5" />Linked to a Google place{pickedName ? `: ${pickedName}` : ''}</div>}
+                  <a href={placeUrl(form)} target="_blank" rel="noreferrer" className="text-accent-blue font-bold inline-flex items-center gap-1.5"><Icon name="map-marker-alt" />Check it on Google Maps</a>
+                </div>
+              )}
             </div>
           </div>
           <div className="px-5 pb-5 flex gap-2.5">
@@ -155,12 +197,12 @@ export default function AdminDistributorsPage() {
               {shown.map((d) => (
                 <tr key={d.id} className="border-b border-border">
                   <td className="p-3"><strong>{d.name}</strong></td>
-                  <td className="p-3 text-text-3">{d.country} · {d.region} · {d.district}{d.town ? ` · ${d.town}` : ''}</td>
+                  <td className="p-3 text-text-3">{d.country} · {d.region} · {d.district}{d.town ? ` · ${d.town}` : ''}{!hasCoords(d) && <span className="ml-2 text-accent-red font-bold">no map pin</span>}</td>
                   <td className="p-3 text-accent-blue">{d.phone || '—'}</td>
                   <td className="p-3"><div className="flex gap-1.5">
-                    <a href={gmapsPlace(d.lat, d.lng)} target="_blank" rel="noreferrer" aria-label={`Open ${d.name} in Google Maps`} title="Open in Google Maps" className="px-2.5 py-1.5 rounded-lg bg-bg-alt text-text-2 text-xs"><Icon name="map-marker-alt" /></a>
-                    <button onClick={() => startEdit(d)} aria-label={`Edit ${d.name}`} className="px-2.5 py-1.5 rounded-lg bg-bg-alt text-text-2 text-xs"><Icon name="edit" /></button>
-                    <button onClick={() => remove(d)} aria-label={`Delete ${d.name}`} className="px-2.5 py-1.5 rounded-lg border border-accent-red text-accent-red text-xs"><Icon name="trash" /></button></div></td>
+                    {hasCoords(d) && <a href={placeUrl(d)} target="_blank" rel="noreferrer" aria-label={`Open ${d.name} in Google Maps`} title="Open in Google Maps" className="px-2.5 py-1.5 rounded-lg bg-bg-alt text-text-2 text-xs"><Icon name="map-marker-alt" /></a>}
+                    <button type="button" onClick={() => startEdit(d)} aria-label={`Edit ${d.name}`} className="px-2.5 py-1.5 rounded-lg bg-bg-alt text-text-2 text-xs"><Icon name="edit" /></button>
+                    <button type="button" onClick={() => remove(d)} aria-label={`Delete ${d.name}`} className="px-2.5 py-1.5 rounded-lg border border-accent-red text-accent-red text-xs"><Icon name="trash" /></button></div></td>
                 </tr>
               ))}
               {!shown.length && <tr><td colSpan={4} className="text-center text-text-3 p-8">No outlets found.</td></tr>}

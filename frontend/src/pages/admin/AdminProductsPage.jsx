@@ -116,7 +116,7 @@ export default function AdminProductsPage() {
                   <td className="p-3">{p.category_display}</td>
                   <td className="p-3">
                     {p.is_featured ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-accent-green/15 text-accent-green flex items-center gap-1 w-fit"><Icon name="star" size="0.7em" />Coming soon</span>
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-accent-green/15 text-accent-green flex items-center gap-1 w-fit"><Icon name="star" size="0.7em" />Not yet in stock</span>
                     ) : (
                       <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${p.stock_status === 'out' ? 'bg-accent-red/15 text-accent-red' : p.stock_status === 'low' ? 'bg-bg-alt text-accent-blue' : 'bg-accent-green/15 text-accent-green'}`}>
                         {p.stock_status === 'out' ? 'Out' : p.stock_qty}
@@ -169,7 +169,7 @@ export default function AdminProductsPage() {
           </div>
           <label className="mt-4 flex items-start gap-2.5 text-sm font-semibold text-text-2 cursor-pointer">
             <input type="checkbox" checked={form.is_featured} onChange={(e) => set('is_featured', e.target.checked)} className="w-4 h-4 mt-0.5" />
-            <span>Featured — not yet in stock (shows “Coming Soon”, and is never counted as out of stock or low stock in the dashboard)</span>
+            <span>Not yet in stock — a preview product still being finalised. It shows “Not yet in stock” on the website and never counts as out of stock or low stock in the dashboard.</span>
           </label>
           <div className="flex gap-2.5 mt-6">
             <button disabled={saving} className="px-5 py-2.5 rounded-btn bg-accent-blue text-white font-bold text-sm flex items-center gap-2 disabled:opacity-60"><Icon name="save" />{saving ? 'Saving…' : modal?.id ? 'Save changes' : 'Add product'}</button>

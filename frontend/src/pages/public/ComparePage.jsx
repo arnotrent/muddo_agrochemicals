@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { productsApi } from '../../api/services'
+import PageHero from '../../components/PageHero'
 import Icon from '../../components/Icon'
 
+// A featured product is simply "not yet in stock" — it is never shown as out of stock.
+const stockLabel = (p) => (p.stock_status === 'featured' ? 'Not yet in stock' : p.stock_status === 'in' ? 'In Stock' : p.stock_status === 'low' ? 'Low Stock' : 'Out of Stock')
 const ROWS = [
   ['Category', (p) => p.category_display],
   ['Active Ingredient', (p) => p.active_ingredient || '—'],
   ['Target Crops', (p) => p.crops || '—'],
   ['Pack Sizes', (p) => p.packing || '—'],
-  ['Stock', (p) => p.stock_status === 'in' ? 'In Stock' : p.stock_status === 'low' ? 'Low Stock' : 'Out of Stock'],
+  ['Stock', stockLabel],
 ]
 
 export default function ComparePage() {
@@ -33,12 +36,12 @@ export default function ComparePage() {
 
   return (
     <>
-      <section className="py-10" style={{ backgroundColor: '#0F172A' }}>
-        <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
-          <h1 className="text-3xl font-bold text-white my-3">Compare Products</h1>
-          <p className="text-white/85 max-w-[52ch]">Select up to 3 products to compare their specifications side by side.</p>
-        </div>
-      </section>
+      <PageHero
+        bg="/images/hero_range_1200.jpg" bgSet="/images/hero_range_1200.jpg 1200w, /images/hero_range_2400.jpg 2400w"
+        side={{ src: '/images/field_pesticide_fungicide_range.jpg', alt: 'M-D Thion, TOP-LAXLY M and M-D Acelemectin products', caption: 'Compare active ingredients, crops and pack sizes side by side.', w: 951, h: 849 }}
+        crumbs={[['Home', '/'], ['Compare Products']]} eyebrow="Side by side" icon={<Icon name="balance-scale" />}
+        title="Compare Products" subtitle="Select up to 3 products to compare their specifications side by side."
+      />
       <section className="py-14">
         <div className="max-w-[1240px] mx-auto px-4 sm:px-6">
           <div className="bg-bg-card border border-border rounded-card p-6.5 mb-8">
@@ -59,7 +62,7 @@ export default function ComparePage() {
                 const isSel = selected.find((s) => s.id === p.id)
                 return (
                   <div key={p.id} onClick={() => toggle(p)} className={`p-2.5 border-[1.5px] rounded-xl cursor-pointer text-center transition-colors ${isSel ? 'border-accent-blue bg-bg-alt' : 'border-border bg-bg-card'}`}>
-                    <img src={p.display_image} className="w-full h-12 object-cover rounded-md mb-1.5" onError={(e) => { e.currentTarget.src = '/images/products_all.jpg' }} />
+                    <img src={p.display_image} alt="" className="w-full h-12 object-cover rounded-md mb-1.5" onError={(e) => { e.currentTarget.src = '/images/products_all.jpg' }} />
                     <div className="text-[0.7rem] font-bold text-text-1 leading-tight">{p.name}</div>
                   </div>
                 )
@@ -75,7 +78,7 @@ export default function ComparePage() {
                     <th className="p-4 text-left text-[0.74rem] font-bold uppercase tracking-wide text-white/50 w-[150px]">Attribute</th>
                     {selected.map((p) => (
                       <th key={p.id} className="p-3.5 text-center text-white border-l border-white/10">
-                        <img src={p.display_image} className="w-14 h-14 object-cover rounded-lg mx-auto mb-2" onError={(e) => { e.currentTarget.src = '/images/products_all.jpg' }} />
+                        <img src={p.display_image} alt="" className="w-14 h-14 object-cover rounded-lg mx-auto mb-2" onError={(e) => { e.currentTarget.src = '/images/products_all.jpg' }} />
                         <div className="text-sm font-bold leading-tight">{p.name}</div>
                       </th>
                     ))}

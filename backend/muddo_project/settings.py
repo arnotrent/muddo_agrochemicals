@@ -1,5 +1,5 @@
-"""Muddo Agro — Django settings (API-only backend). Update 3: all apps installed, all throttle scopes,
-proxy-aware HTTPS, password-recovery settings."""
+"""Muddo Agro — Django settings (API-only backend).
+Update 11: single STORAGES definition (database-backed uploaded pictures unless S3 is configured)."""
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -89,7 +89,6 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID', default='')
 AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY', default='')
@@ -99,10 +98,15 @@ AWS_S3_ENDPOINT_URL = config('AWS_S3_ENDPOINT_URL', default='')
 AWS_S3_CUSTOM_DOMAIN = config('AWS_S3_CUSTOM_DOMAIN', default='')
 
 USE_S3_MEDIA = bool(AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME)
+MEDIA_ROOT = BASE_DIR / 'media'
 
+# ── File storage ────────────────────────────────────────────────────────────
+# ONE place decides where uploads go (Django 4.2 STORAGES; the old DEFAULT_FILE_STORAGE / STATICFILES_STORAGE
+# settings must NOT also be set or Django refuses to start).
+#   * S3 variables present -> S3-compatible bucket.
+#   * otherwise            -> the DATABASE (Render's disk is wiped on every redeploy), served by apps.core.media_views.
 if USE_S3_MEDIA:
     INSTALLED_APPS.append('storages')
-    DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
     AWS_DEFAULT_ACL = None
     AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
     AWS_S3_FILE_OVERWRITE = False
@@ -111,14 +115,19 @@ if USE_S3_MEDIA:
         MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
     else:
         MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+    _DEFAULT_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 else:
     MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / 'media'
+    _DEFAULT_STORAGE = 'apps.core.media_storage.DatabaseMediaStorage'
+
+STORAGES = {
+    'default': {'BACKEND': _DEFAULT_STORAGE},
+    'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Private chat attachments live OUTSIDE MEDIA_ROOT (served only through the signed endpoint).
+# Private chat attachments (legacy disk fallback only — new files are stored in the database / S3).
 PRIVATE_MEDIA_ROOT = BASE_DIR / 'private_media'
 DATA_UPLOAD_MAX_MEMORY_SIZE = 30 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024

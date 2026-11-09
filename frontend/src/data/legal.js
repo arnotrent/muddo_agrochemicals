@@ -8,7 +8,7 @@ const year = new Date().getFullYear()
 export const LEGAL = {
   copyright: {
     title: 'Copyright & Licence Notice',
-    intro: `\u00a9 ${site.year_founded}\u2013${year} ${NAME}. All rights reserved.`,
+    intro: `\u00a9 ${year > 2026 ? `2026\u2013${year}` : '2026'} ${NAME}. All rights reserved.`,
     sections: [
       ['Ownership', `All content on this website - including text, product descriptions, technical data sheets, photographs, illustrations, logos, graphics, page layouts, software, the arrangement and compilation of data, and the database of products and outlets - is owned by ${NAME} ("MACL") or used under licence. It is protected by the Copyright and Neighbouring Rights Act, 2006 of Uganda and by international copyright treaties, including the Berne Convention.`],
       ['Trade names and marks', `MUDDO AGRO, MACL, our logo and our product names (for example MUDDOSATE, MD MAIZE PLUS, M-D FOS and TOP-LAXLY M) are trade names and marks of ${NAME}, whether or not registered. Other company and product names belong to their owners. Nothing here grants any right to use a mark without our written permission.`],

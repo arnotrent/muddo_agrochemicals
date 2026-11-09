@@ -1,0 +1,9 @@
+Muddo Agro Chemicals LTD web platform - third-party notices
+
+This product includes open-source software, each under its own licence. The
+main components (verify exact terms in each package before redistribution):
+  Django, Django REST Framework (BSD), django-cors-headers (MIT),
+  djangorestframework-simplejwt (MIT), WhiteNoise (MIT), ReportLab (BSD),
+  Pillow (HPND), React, React Router, Chart.js, Axios, Tailwind CSS, Vite (MIT),
+  Leaflet (BSD-2-Clause), react-leaflet and @react-leaflet/core (Hippocratic-2.1).
+Map data (c) OpenStreetMap contributors, ODbL.

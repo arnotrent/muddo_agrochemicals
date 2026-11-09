@@ -61,7 +61,7 @@ edit('frontend/src/layouts/PublicLayout.jsx', [
     ('<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">', '<NewsletterSignup />\n          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">', '<NewsletterSignup />'),
     ('<div className="border-t border-white/10 py-4 flex justify-between flex-wrap gap-2 text-xs text-white/40"><p>&copy; {new Date().getFullYear()} Muddo Agro Chemicals LTD. All Rights Reserved.</p></div>',
      '<div className="border-t border-white/10 py-4 flex justify-between flex-wrap gap-x-6 gap-y-2 text-xs text-white/50">\n'
-     '            <p>&copy; {site.year_founded || \'2020\'}&ndash;{new Date().getFullYear()} Muddo Agro Chemicals LTD. All rights reserved. MUDDO AGRO, MACL and our product names and logo are trade names of Muddo Agro Chemicals LTD.</p>\n'
+     '            <p>&copy; {new Date().getFullYear() > 2026 ? `2026\u2013${new Date().getFullYear()}` : \'2026\'} Muddo Agro Chemicals LTD. All rights reserved. MUDDO AGRO, MACL and our product names and logo are trade names of Muddo Agro Chemicals LTD.</p>\n'
      '            <p className="flex gap-4"><Link to="/legal/copyright" className="hover:text-accent-blue">Copyright &amp; Licence</Link><Link to="/legal/terms" className="hover:text-accent-blue">Terms</Link><Link to="/legal/privacy" className="hover:text-accent-blue">Privacy</Link></p>\n          </div>', 'Copyright &amp; Licence')])
 edit('frontend/src/layouts/AdminLayout.jsx', [("label: 'Import CSV'", "label: 'Bulk Import'", "label: 'Bulk Import'")])
 edit('frontend/index.html', [(

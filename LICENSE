@@ -1,21 +1,25 @@
-MIT License
+PROPRIETARY LICENCE - ALL RIGHTS RESERVED
 
-Copyright (c) 2026 arnotrent
+Copyright (c) 2026 Muddo Agro Chemicals LTD. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This software, website content, text, images, logos, designs, data and
+documentation (together, the "Work") are the property of Muddo Agro Chemicals
+LTD ("MACL"). The Work is proprietary and confidential. No licence or right is
+granted except as set out below or in a separate written agreement signed by
+MACL.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Permitted: MACL, and developers or contractors authorised by MACL in writing,
+may use, modify and deploy the Work solely for MACL's own business.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Not permitted without MACL's prior written consent: copying, publishing,
+distributing, sublicensing, selling, renting, reverse engineering (except where
+the law allows), scraping the website or its database, using the Work or its
+content to train machine-learning models, or using MACL's names, marks or logos.
+
+The source repository is private. Access is limited to persons authorised by
+MACL, who must keep credentials, keys and data confidential.
+
+Third-party components remain under their own licences (see NOTICE).
+
+THE WORK IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, TO THE FULLEST
+EXTENT PERMITTED BY LAW.

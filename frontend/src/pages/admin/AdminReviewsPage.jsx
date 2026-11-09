@@ -11,8 +11,14 @@ const loadErr = (err) => {
   const s = err.response?.status
   const url = err.config?.url || '/admin/reviews/'
   if (s === 404) return `Could not load reviews: the server has no ${url} (404). Redeploy the backend and make sure products/urls_api.py includes the admin reviews routes.`
-  if (s === 401 || s === 403) return `Could not load reviews: you are not signed in as an administrator (${s}).`
+  if (s === 401 || s === 403) return `Could not load reviews: you are not signed in as an administrator (${s}). Sign out and in again.`
+  if (s >= 500) return `The server failed while loading reviews (${s}). Check the backend log on Render for the error.`
   return `Could not load reviews (${s || 'no connection'} on ${url}).`
+}
+const actErr = (err) => {
+  const d = err.response?.data
+  const first = d?.errors && Object.values(d.errors).flat()[0]
+  return (typeof first === 'string' && first) || d?.detail || `Action failed${err.response ? ` (${err.response.status})` : ' - no connection'}. Please try again.`
 }
 const cls = 'w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 outline-none focus:border-accent-blue'
 
@@ -22,29 +28,46 @@ export default function AdminReviewsPage() {
   const [counts, setCounts] = useState({})
   const [busy, setBusy] = useState(null)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState(null)
 
   const load = () => {
-    reviewsApi.adminList({ status: tab || undefined, page_size: 200 }).then(({ data }) => setRows(data.results || data)).catch((err) => setError(loadErr(err)))
-    reviewsApi.adminList({ page_size: 500 }).then(({ data }) => { const c = {}; (data.results || data).forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); setCounts(c) }).catch(() => {})
+    setError(''); setLoading(true)
+    try {
+      reviewsApi.adminList({ status: tab || undefined, page_size: 200 })
+        .then(({ data }) => setRows(data.results || data))
+        .catch((err) => { setRows([]); setError(loadErr(err)) })
+        .finally(() => setLoading(false))
+      reviewsApi.adminList({ page_size: 500 })
+        .then(({ data }) => { const c = {}; (data.results || data).forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); setCounts(c) })
+        .catch(() => {})
+    } catch {
+      setLoading(false)
+      setError('The reviews service is missing in the app: reviewsApi.adminList is not defined in src/api/services.js.')
+    }
   }
   useEffect(() => { load() }, [tab]) // eslint-disable-line
 
-  const act = async (id, fn) => { setBusy(id); setError(''); try { await fn(); load() } catch { setError('Action failed — please try again.') } finally { setBusy(null) } }
+  const act = async (id, fn) => { setBusy(id); setError(''); try { await fn(); load() } catch (err) { setError(actErr(err)) } finally { setBusy(null) } }
   const setStatus = (r, s) => act(r.id, () => reviewsApi.adminSetStatus(r.id, s))
   const save = async (e) => {
     e.preventDefault(); setBusy('save'); setError('')
     try {
       await reviewsApi.adminUpdate(editor.id, { name: editor.name, rating: editor.rating, comment: editor.comment })
       setEditor(null); load()
-    } catch (err) { const errs = err.response?.data?.errors; setError((errs && Object.values(errs).flat()[0]) || 'Could not save the changes.') } finally { setBusy(null) }
+    } catch (err) { setError(actErr(err)) } finally { setBusy(null) }
   }
   const small = 'px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 transition-transform hover:-translate-y-0.5'
 
   return (
     <div>
       <h1 className="text-xl font-bold text-text-1 mb-6 flex items-center gap-2"><Icon name="star" />Product Reviews</h1>
-      {error && <div role="alert" className="mb-4 p-3 rounded-lg bg-accent-red/10 text-accent-red text-sm">{error}</div>}
+      {error && (
+        <div role="alert" className="mb-4 p-3 rounded-lg bg-accent-red/10 text-accent-red text-sm flex items-center justify-between gap-3 flex-wrap">
+          <span>{error}</span>
+          <button onClick={load} className="px-3 py-1.5 rounded-lg bg-accent-red text-white text-xs font-bold">Try again</button>
+        </div>
+      )}
       <div className="flex gap-2 mb-2 flex-wrap">
         {TABS.map(([v, l]) => <button key={v} onClick={() => setTab(v)} className={`px-3.5 py-1.5 rounded-btn text-sm font-bold ${tab === v ? 'bg-accent-blue text-white' : 'bg-bg-alt text-text-2'}`}>{l}{v && counts[v] ? ` (${counts[v]})` : ''}</button>)}
       </div>
@@ -67,7 +90,8 @@ export default function AdminReviewsPage() {
             </div>
           </article>
         ))}
-        {!rows.length && <div className="bg-bg-card border border-border rounded-card p-10 text-center text-text-3">No {tab || ''} reviews.</div>}
+        {loading && !rows.length && <div className="bg-bg-card border border-border rounded-card p-10 text-center text-text-3">Loading reviews…</div>}
+        {!loading && !error && !rows.length && <div className="bg-bg-card border border-border rounded-card p-10 text-center text-text-3">No {tab || ''} reviews.</div>}
       </div>
 
       <Modal open={!!editor} onClose={() => setEditor(null)} title={`Edit review — ${editor?.product_name || ''}`} icon="edit">

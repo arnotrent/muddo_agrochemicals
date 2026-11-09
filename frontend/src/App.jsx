@@ -42,6 +42,7 @@ const AdminNewsletterPage = lazy(() => import('./pages/admin/AdminNewsletterPage
 const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'))
 const AdminLeadershipPage = lazy(() => import('./pages/admin/AdminLeadershipPage'))
 const AdminTestimonialsPage = lazy(() => import('./pages/admin/AdminTestimonialsPage'))
+const AdminReviewsPage = lazy(() => import('./pages/admin/AdminReviewsPage'))
 
 function RouteLoader() {
   return (
@@ -96,6 +97,7 @@ export default function App() {
                   <Route path="/admin/inventory" element={<AdminInventoryPage />} />
                   <Route path="/admin/distributors" element={<AdminDistributorsPage />} />
                   <Route path="/admin/requests" element={<AdminRequestsPage />} />
+                  <Route path="/admin/reviews" element={<AdminReviewsPage />} />
                   <Route path="/admin/testimonials" element={<AdminTestimonialsPage />} />
                   <Route path="/admin/leadership" element={<AdminLeadershipPage />} />
                   <Route path="/admin/supply-requests" element={<AdminSupplyRequestsPage />} />

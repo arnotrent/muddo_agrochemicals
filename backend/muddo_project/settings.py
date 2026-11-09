@@ -205,6 +205,9 @@ DEFAULT_FROM_EMAIL = 'Muddo Agro Chemicals <muddoagro811@gmail.com>'
 if not EMAIL_HOST_PASSWORD:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
+# Newsletter sign-ups must be confirmed by e-mail (double opt-in) whenever real e-mail sending is configured.
+NEWSLETTER_DOUBLE_OPT_IN = config('NEWSLETTER_DOUBLE_OPT_IN', default=bool(EMAIL_HOST_PASSWORD), cast=bool)
+
 COMPANY_NOTIFY_EMAILS = config('COMPANY_NOTIFY_EMAILS', default='muddoagro811@gmail.com,kulangu_w@yahoo.com', cast=Csv())
 WHATSAPP_NUMBER = config('WHATSAPP_NUMBER', default='256772507582')
 GOOGLE_MAPS_KEY = config('GOOGLE_MAPS_KEY', default='')

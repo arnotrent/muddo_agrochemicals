@@ -7,13 +7,10 @@ from apps.core.validators import validate_image_upload
 def _resolve_image_url(obj, request):
     """
     Product.display_image can be one of three things:
-      1. An uploaded file's MEDIA_URL path (served BY this Django backend)
-         -> must be absolutized against the API's own domain.
-      2. A plain '/images/...' path meaning "lives in the React app's own
-         public/ folder" (e.g. seed data) -> must be left exactly as-is,
-         so the browser resolves it against the FRONTEND's origin, not
-         the API's. Absolutizing this against the backend would 404.
-      3. A full external URL (https://...) -> left as-is either way.
+      1. An uploaded file's MEDIA_URL path (served BY this Django backend) -> absolutized against the API's own domain.
+      2. A plain '/images/...' path meaning "lives in the React app's own public/ folder" -> left as-is so the browser
+         resolves it against the FRONTEND's origin.
+      3. A full external URL (https://...) -> left as-is.
     """
     url = obj.display_image
     if request and url.startswith(settings.MEDIA_URL):
@@ -22,7 +19,7 @@ def _resolve_image_url(obj, request):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    """Lightweight — used for catalogue grids, search results, related products."""
+    """Lightweight - used for catalogue grids, search results, related products."""
     display_image = serializers.SerializerMethodField()
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     stock_qty = serializers.ReadOnlyField()
@@ -46,32 +43,49 @@ class ProductDetailSerializer(ProductListSerializer):
 
 
 class ProductAdminSerializer(serializers.ModelSerializer):
-    """Full read/write serializer used by the admin catalogue CRUD screens."""
+    """
+    Full read/write serializer used by staff. Staff are served this serializer for EVERY product request (also when
+    they browse the public pages while signed in), so it must return everything the public screens read:
+    category_display, stock_status and the current stock_qty (which is a write-only INPUT field, added back on output).
+    """
     display_image = serializers.SerializerMethodField(read_only=True)
-    stock_qty = serializers.IntegerField(write_only=True, required=False, default=0)
-    reorder_level = serializers.IntegerField(write_only=True, required=False, default=10)
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    stock_status = serializers.ReadOnlyField()
+    stock_qty = serializers.IntegerField(write_only=True, required=False, min_value=0)
+    reorder_level = serializers.IntegerField(write_only=True, required=False, min_value=0, default=10)
     unit = serializers.CharField(write_only=True, required=False, default='units')
 
     class Meta:
         model = Product
         fields = [
-            'id', 'name', 'category', 'description', 'usage_instructions', 'active_ingredient', 'formulation',
-            'crops', 'dosage', 'packing', 'image_url', 'image_file', 'display_image', 'is_featured',
-            'created_at', 'stock_qty', 'reorder_level', 'unit',
+            'id', 'name', 'category', 'category_display', 'description', 'usage_instructions', 'active_ingredient',
+            'formulation', 'crops', 'dosage', 'packing', 'image_url', 'image_file', 'display_image', 'is_featured',
+            'created_at', 'stock_qty', 'stock_status', 'reorder_level', 'unit',
         ]
         read_only_fields = ['id', 'created_at']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['stock_qty'] = instance.stock_qty
+        return data
 
     def get_display_image(self, obj):
         return _resolve_image_url(obj, self.context.get('request'))
 
     def validate_name(self, value):
-        value = value.strip()
+        value = ' '.join(value.split())
         qs = Product.objects.filter(name__iexact=value)
         if self.instance:
             qs = qs.exclude(pk=self.instance.pk)
         if qs.exists():
             raise serializers.ValidationError(
                 f'"{value}" already exists in the catalogue \u2014 edit that product instead of adding a duplicate.')
+        return value
+
+    def validate_image_url(self, value):
+        value = (value or '').strip()
+        if value and not value.lower().startswith(('http://', 'https://', '/')):
+            raise serializers.ValidationError('The image link must start with https:// (or / for a file on this website).')
         return value
 
     def validate_image_file(self, value):
@@ -89,15 +103,18 @@ class ProductAdminSerializer(serializers.ModelSerializer):
         return product
 
     def update(self, instance, validated_data):
-        from apps.inventory.models import Inventory
+        from apps.inventory.models import Inventory, InventoryLog
         stock_qty = validated_data.pop('stock_qty', None)
-        reorder_level = validated_data.pop('reorder_level', None)
-        unit = validated_data.pop('unit', None)
+        reorder_level = validated_data.pop('reorder_level', None) if 'reorder_level' in self.initial_data else None
+        unit = validated_data.pop('unit', None) if 'unit' in self.initial_data else None
+        validated_data.pop('reorder_level', None)
+        validated_data.pop('unit', None)
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         instance.save()
         if stock_qty is not None or reorder_level is not None or unit is not None:
             inv, _ = Inventory.objects.get_or_create(product=instance, defaults={'stock_qty': 0})
+            before = inv.stock_qty
             if stock_qty is not None:
                 inv.stock_qty = stock_qty
             if reorder_level is not None:
@@ -105,4 +122,8 @@ class ProductAdminSerializer(serializers.ModelSerializer):
             if unit is not None:
                 inv.unit = unit
             inv.save()
+            if stock_qty is not None and stock_qty != before:
+                req = self.context.get('request')
+                InventoryLog.objects.create(product=instance, change_qty=stock_qty - before, reason='Edited in product form',
+                                            changed_by=getattr(getattr(req, 'user', None), 'username', '') or '')
         return instance

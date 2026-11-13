@@ -8,9 +8,7 @@ class Product(models.Model):
     name              = models.CharField(max_length=200)
     category          = models.CharField(max_length=20, choices=CATS)
     description       = models.TextField(blank=True)
-    # Bullet-point application/usage steps, one per line — shown separately
-    # from `description` on the product detail page (the "extended
-    # details" section), kept out of the short card-view text entirely.
+    # Bullet-point application/usage steps, one per line — shown on the product detail page only.
     usage_instructions = models.TextField(blank=True)
     active_ingredient = models.CharField(max_length=300, blank=True)
     formulation        = models.CharField(max_length=200, blank=True)
@@ -19,11 +17,7 @@ class Product(models.Model):
     packing            = models.CharField(max_length=200, blank=True)
     image_url          = models.CharField(max_length=500, blank=True)
     image_file         = models.ImageField(upload_to='products/', blank=True, null=True)
-    # A product still being processed / not yet released to stock. It's
-    # shown as a "Featured" preview (on the homepage and its category
-    # page) instead of showing stock status, and is excluded from normal
-    # stock-out messaging until an admin flips this off once real stock
-    # is added — see apps/products/serializers.py / api_views.py.
+    # A product still being finalised ("not yet in stock"). Never raises stock alerts.
     is_featured         = models.BooleanField(default=False)
     created_at         = models.DateTimeField(auto_now_add=True)
     class Meta: ordering=['category','name']
@@ -48,8 +42,12 @@ class Product(models.Model):
 
 
 class ProductReview(models.Model):
-    """Public product review. Always starts 'pending'; only 'approved' reviews are ever shown."""
-    STATUS = [('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')]
+    """Public product review. Always starts 'pending'; only 'approved' reviews are ever shown.
+
+    'hidden' = approved earlier but kept out of sight (created by migration products.0007). It MUST be listed in the
+    model: django-filter validates ?status=… against these choices, and the serializer validates PATCH {status}, so
+    while 'hidden' was missing the admin Reviews page answered HTTP 400 ("Could not load reviews (400)")."""
+    STATUS = [('pending', 'Pending'), ('approved', 'Approved'), ('hidden', 'Hidden'), ('rejected', 'Rejected')]
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='reviews')
     name = models.CharField(max_length=80)
     rating = models.PositiveSmallIntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)])

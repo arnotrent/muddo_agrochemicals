@@ -6,6 +6,7 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from apps.core import edit_tokens
 from apps.core.permissions import IsAdmin
 from apps.core.throttles import TestimonialThrottle
 from apps.products.models import Product
@@ -31,7 +32,8 @@ class PublicTestimonialList(generics.ListAPIView):
 @throttle_classes([TestimonialThrottle])
 @parser_classes([MultiPartParser, FormParser, JSONParser])
 def submit_testimonial_view(request):
-    """POST /api/v1/testimonials/submit/ — public; stored 'pending' until approved; the admin alone decides what is shown."""
+    """POST /api/v1/testimonials/submit/ — public; stored 'pending' until approved; the admin alone decides what is shown.
+    The response carries a private `edit_token` so the visitor can later edit / withdraw their own testimonial."""
     s = TestimonialSubmitSerializer(data=request.data)
     s.is_valid(raise_exception=True)
     d = s.validated_data
@@ -47,7 +49,7 @@ def submit_testimonial_view(request):
     if d.get('photo'):
         t.photo.save(d['photo'].name, d['photo'], save=False)
     t.save()
-    return Response(ok, status=status.HTTP_201_CREATED)
+    return Response({**ok, 'edit_token': edit_tokens.make('testimonial', t.pk)}, status=status.HTTP_201_CREATED)
 
 
 class AdminTestimonialList(generics.ListCreateAPIView):

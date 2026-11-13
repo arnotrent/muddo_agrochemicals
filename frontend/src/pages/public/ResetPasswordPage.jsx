@@ -15,14 +15,16 @@ export default function ResetPasswordPage() {
   const uid = params.get('uid') || ''
   const token = params.get('token') || ''
   const [valid, setValid] = useState(null)
+  const [needsOtp, setNeedsOtp] = useState(false)
   const [pw, setPw] = useState('')
   const [pw2, setPw2] = useState('')
+  const [otp, setOtp] = useState('')
   const [show, setShow] = useState(false)
   const [state, setState] = useState(null)
 
   useEffect(() => {
     if (!uid || !token) return setValid(false)
-    recoveryApi.validate(uid, token).then(({ data }) => setValid(!!data.valid)).catch(() => setValid(false))
+    recoveryApi.validate(uid, token).then(({ data }) => { setValid(!!data.valid); setNeedsOtp(!!data.needs_otp) }).catch(() => setValid(false))
   }, [uid, token])
 
   const submit = async (e) => {
@@ -30,9 +32,10 @@ export default function ResetPasswordPage() {
     if (pw !== pw2) return setState({ ok: false, msg: 'The two passwords do not match.' })
     setState('sending')
     try {
-      const { data } = await recoveryApi.confirm({ uid, token, new_password: pw, confirm_password: pw2 })
+      const { data } = await recoveryApi.confirm({ uid, token, new_password: pw, confirm_password: pw2, otp })
       setState({ ok: true, msg: data.detail })
     } catch (err) {
+      setOtp('')
       setState({ ok: false, msg: err.response?.data?.detail || 'Could not reset the password.' })
     }
   }
@@ -66,7 +69,13 @@ export default function ResetPasswordPage() {
             {rules(pw).map(([t, ok]) => <li key={t} className={ok ? 'text-accent-green' : 'text-text-3'}><Icon name={ok ? 'check' : 'clock'} className="mr-1.5" />{t}</li>)}
           </ul>
           <label htmlFor="rp2" className="text-sm font-semibold text-text-2 block mb-1.5">Confirm new password</label>
-          <input id="rp2" type={show ? 'text' : 'password'} required value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" className={`${cls} mb-5`} />
+          <input id="rp2" type={show ? 'text' : 'password'} required value={pw2} onChange={(e) => setPw2(e.target.value)} autoComplete="new-password" className={`${cls} mb-4`} />
+          {needsOtp && (
+            <>
+              <label htmlFor="rp3" className="text-sm font-semibold text-text-2 block mb-1.5">2FA code from your authenticator app</label>
+              <input id="rp3" required autoComplete="one-time-code" maxLength={16} value={otp} onChange={(e) => setOtp(e.target.value)} placeholder="6-digit code or backup code" className={`${cls} mb-4 font-mono`} />
+            </>
+          )}
           <button disabled={state === 'sending'} className="w-full py-3.5 rounded-btn bg-accent-blue text-white font-bold text-sm disabled:opacity-60 flex items-center justify-center gap-2">
             <Icon name="lock" />{state === 'sending' ? 'Saving…' : 'Save new password'}
           </button>

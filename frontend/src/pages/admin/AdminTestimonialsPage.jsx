@@ -6,14 +6,16 @@ import ImageDropzone from '../../components/ImageDropzone'
 import Icon from '../../components/Icon'
 import { errText } from '../../utils/apiError'
 
-const TABS = [['pending', 'Pending'], ['approved', 'Approved'], ['hidden', 'Hidden'], ['rejected', 'Rejected'], ['', 'All']]
+// "All" comes first (and is the page you land on); the status groups follow.
+const TABS = [['', 'All'], ['pending', 'Pending'], ['approved', 'Approved'], ['hidden', 'Hidden'], ['rejected', 'Rejected']]
 const BADGE = { approved: 'bg-accent-green/15 text-accent-green', rejected: 'bg-accent-red/15 text-accent-red', hidden: 'bg-bg-alt text-text-3', pending: 'bg-bg-alt text-accent-blue' }
 const EMPTY = { name: '', role: '', message: '', rating: 0, product: '', status: 'approved', order: 0 }
 const initials = (n) => n.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
 const cls = 'w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 outline-none focus:border-accent-blue'
+const GONE = 'That testimonial no longer exists (it was deleted or removed elsewhere). The list has been refreshed.'
 
 export default function AdminTestimonialsPage() {
-  const [tab, setTab] = useState('pending')
+  const [tab, setTab] = useState('')
   const [rows, setRows] = useState([])
   const [counts, setCounts] = useState({})
   const [products, setProducts] = useState([])
@@ -24,13 +26,19 @@ export default function AdminTestimonialsPage() {
   const [flash, setFlash] = useState(null)
 
   const load = () => {
-    testimonialsApi.adminList({ status: tab || undefined, page_size: 200 }).then(({ data }) => setRows(data.results || data)).catch(() => setFlash({ ok: false, msg: 'Could not load testimonials.' }))
-    testimonialsApi.adminList({ page_size: 500 }).then(({ data }) => { const c = {}; (data.results || data).forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); setCounts(c) }).catch(() => {})
+    testimonialsApi.adminList({ status: tab || undefined, page_size: 200 }).then(({ data }) => setRows(data.results || data)).catch((err) => { setRows([]); setFlash({ ok: false, msg: errText(err, 'Could not load testimonials.') }) })
+    testimonialsApi.adminList({ page_size: 500 }).then(({ data }) => { const list = data.results || data; const c = { '': list.length }; list.forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); setCounts(c) }).catch(() => {})
   }
   useEffect(() => { load() }, [tab]) // eslint-disable-line
   useEffect(() => { productsApi.list({ page_size: 200 }).then(({ data }) => setProducts(data.results || data)).catch(() => {}) }, [])
 
-  const setStatus = async (r, status) => { setBusy(r.id); try { const fd = new FormData(); fd.append('status', status); await testimonialsApi.adminUpdate(r.id, fd); load() } catch { setFlash({ ok: false, msg: 'Action failed.' }) } finally { setBusy(null) } }
+  const run = async (id, fn, okMsg) => {
+    setBusy(id)
+    try { await fn(); if (okMsg) setFlash({ ok: true, msg: okMsg }); load() }
+    catch (err) { setFlash({ ok: false, msg: err.response?.status === 404 ? GONE : errText(err, 'Action failed.') }); if (err.response?.status === 404) load() }
+    finally { setBusy(null) }
+  }
+  const setStatus = (r, status) => run(r.id, () => { const fd = new FormData(); fd.append('status', status); return testimonialsApi.adminUpdate(r.id, fd) })
   const open = (r) => { setPhoto(null); setRemovePhoto(false); setEditor(r ? { ...r, product: r.product || '', rating: r.rating || 0 } : { ...EMPTY }) }
   const close = () => { setEditor(null); setPhoto(null); setRemovePhoto(false) }
   const save = async (e) => {
@@ -45,7 +53,8 @@ export default function AdminTestimonialsPage() {
       if (editor.id) await testimonialsApi.adminUpdate(editor.id, fd); else await testimonialsApi.adminCreate(fd)
       setFlash({ ok: true, msg: editor.id ? 'Testimonial updated.' : 'Testimonial added.' }); close(); load()
     } catch (err) {
-      setFlash({ ok: false, msg: errText(err, 'Could not save the testimonial.') })
+      setFlash({ ok: false, msg: err.response?.status === 404 ? GONE : errText(err, 'Could not save the testimonial.') })
+      if (err.response?.status === 404) { close(); load() }
     } finally { setBusy(null) }
   }
   const small = 'px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 transition-transform hover:-translate-y-0.5'
@@ -57,14 +66,14 @@ export default function AdminTestimonialsPage() {
         <button onClick={() => open(null)} className="px-4 py-2 rounded-btn bg-accent-blue text-white font-bold text-sm flex items-center gap-2 transition-transform hover:-translate-y-0.5"><Icon name="plus" />Add testimonial</button>
       </div>
       {flash && <div role="status" className={`mb-4 p-3 rounded-lg text-sm flex items-center gap-2 ${flash.ok ? 'bg-accent-green/10 text-accent-green' : 'bg-accent-red/10 text-accent-red'}`}><Icon name={flash.ok ? 'check-circle' : 'exclamation-circle'} />{flash.msg}</div>}
-      <div className="flex gap-2 mb-2 flex-wrap">
-        {TABS.map(([v, l]) => <button key={v} onClick={() => setTab(v)} className={`px-3.5 py-1.5 rounded-btn text-sm font-bold ${tab === v ? 'bg-accent-blue text-white' : 'bg-bg-alt text-text-2'}`}>{l}{v && counts[v] ? ` (${counts[v]})` : ''}</button>)}
+      <div className="flex gap-2 mb-2 flex-wrap" role="tablist">
+        {TABS.map(([v, l]) => <button key={v} role="tab" aria-selected={tab === v} onClick={() => setTab(v)} className={`px-3.5 py-1.5 rounded-btn text-sm font-bold ${tab === v ? 'bg-accent-blue text-white' : 'bg-bg-alt text-text-2'}`}>{l}{counts[v] ? ` (${counts[v]})` : ''}</button>)}
       </div>
       <p className="text-xs text-text-3 mb-4">Only <strong>Approved</strong> testimonials appear on the website. <strong>Hidden</strong> ones are kept but not shown; you can show them again any time.</p>
       <div className="space-y-3">
         {rows.map((r) => (
           <article key={r.id} className="bg-bg-card border border-border rounded-card p-4 flex gap-4 transition-colors hover:border-accent-blue/60">
-            <div className="w-14 h-14 rounded-full bg-accent-blue text-white font-bold flex items-center justify-center overflow-hidden flex-shrink-0">{r.photo_url ? <img src={r.photo_url} alt="" className="w-full h-full object-cover" /> : initials(r.name)}</div>
+            <div className="w-14 h-14 rounded-full bg-accent-blue text-white font-bold flex items-center justify-center overflow-hidden flex-shrink-0">{r.photo_url ? <img src={r.photo_url} alt="" className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none' }} /> : initials(r.name)}</div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-1">
                 <strong className="text-text-1">{r.name}</strong>
@@ -81,7 +90,7 @@ export default function AdminTestimonialsPage() {
                 {r.status === 'approved' && <button disabled={busy === r.id} onClick={() => setStatus(r, 'hidden')} className={`${small} bg-bg-alt text-text-2`}><Icon name="eye-slash" />Hide</button>}
                 {r.status !== 'rejected' && <button disabled={busy === r.id} onClick={() => setStatus(r, 'rejected')} className={`${small} bg-bg-alt text-text-2`}><Icon name="times" />Decline</button>}
                 <button onClick={() => open(r)} className={`${small} bg-bg-alt text-text-2`}><Icon name="edit" />Edit</button>
-                <button aria-label="Delete testimonial" onClick={() => confirm('Delete this testimonial permanently?') && testimonialsApi.adminDelete(r.id).then(load)} className={`${small} border border-accent-red text-accent-red`}><Icon name="trash" /></button>
+                <button aria-label="Delete testimonial" disabled={busy === r.id} onClick={() => confirm('Delete this testimonial permanently?') && run(r.id, () => testimonialsApi.adminDelete(r.id), 'Testimonial deleted.')} className={`${small} border border-accent-red text-accent-red`}><Icon name="trash" /></button>
               </div>
             </div>
           </article>

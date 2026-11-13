@@ -4,26 +4,32 @@ import { Stars, StarPicker } from '../../components/StarRating'
 import Modal from '../../components/Modal'
 import Icon from '../../components/Icon'
 
+// "All" comes first (and is the page you land on); the status groups follow.
 // approved = shown on the site · hidden = approved earlier but kept out of sight · rejected = declined · pending = awaiting a decision
-const TABS = [['pending', 'Pending'], ['approved', 'Approved'], ['hidden', 'Hidden'], ['rejected', 'Rejected'], ['', 'All']]
+const TABS = [['', 'All'], ['pending', 'Pending'], ['approved', 'Approved'], ['hidden', 'Hidden'], ['rejected', 'Rejected']]
 const BADGE = { approved: 'bg-accent-green/15 text-accent-green', rejected: 'bg-accent-red/15 text-accent-red', hidden: 'bg-bg-alt text-text-3', pending: 'bg-bg-alt text-accent-blue' }
+const serverMsg = (err) => {
+  const d = err.response?.data
+  const first = d?.errors && Object.values(d.errors).flat()[0]
+  return (typeof first === 'string' && first) || d?.detail || ''
+}
 const loadErr = (err) => {
   const s = err.response?.status
   const url = err.config?.url || '/admin/reviews/'
   if (s === 404) return `Could not load reviews: the server has no ${url} (404). Redeploy the backend and make sure products/urls_api.py includes the admin reviews routes.`
   if (s === 401 || s === 403) return `Could not load reviews: you are not signed in as an administrator (${s}). Sign out and in again.`
+  if (s === 400) return `The server refused the request (400): ${serverMsg(err) || 'invalid filter'}.`
   if (s >= 500) return `The server failed while loading reviews (${s}). Check the backend log on Render for the error.`
   return `Could not load reviews (${s || 'no connection'} on ${url}).`
 }
 const actErr = (err) => {
-  const d = err.response?.data
-  const first = d?.errors && Object.values(d.errors).flat()[0]
-  return (typeof first === 'string' && first) || d?.detail || `Action failed${err.response ? ` (${err.response.status})` : ' - no connection'}. Please try again.`
+  if (err.response?.status === 404) return 'That review no longer exists (it was deleted or removed elsewhere). The list has been refreshed.'
+  return serverMsg(err) || `Action failed${err.response ? ` (${err.response.status})` : ' - no connection'}. Please try again.`
 }
 const cls = 'w-full px-3.5 py-2.5 rounded-input border border-border bg-bg-input text-text-1 outline-none focus:border-accent-blue'
 
 export default function AdminReviewsPage() {
-  const [tab, setTab] = useState('pending')
+  const [tab, setTab] = useState('')
   const [rows, setRows] = useState([])
   const [counts, setCounts] = useState({})
   const [busy, setBusy] = useState(null)
@@ -31,31 +37,30 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true)
   const [editor, setEditor] = useState(null)
 
-  const load = () => {
-    setError(''); setLoading(true)
-    try {
-      reviewsApi.adminList({ status: tab || undefined, page_size: 200 })
-        .then(({ data }) => setRows(data.results || data))
-        .catch((err) => { setRows([]); setError(loadErr(err)) })
-        .finally(() => setLoading(false))
-      reviewsApi.adminList({ page_size: 500 })
-        .then(({ data }) => { const c = {}; (data.results || data).forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); setCounts(c) })
-        .catch(() => {})
-    } catch {
-      setLoading(false)
-      setError('The reviews service is missing in the app: reviewsApi.adminList is not defined in src/api/services.js.')
-    }
+  const load = (keepError = false) => {
+    if (!keepError) setError('')
+    setLoading(true)
+    reviewsApi.adminList({ status: tab || undefined, page_size: 200 })
+      .then(({ data }) => setRows(data.results || data))
+      .catch((err) => { setRows([]); setError(loadErr(err)) })
+      .finally(() => setLoading(false))
+    reviewsApi.adminList({ page_size: 500 })
+      .then(({ data }) => { const c = {}; (data.results || data).forEach((r) => { c[r.status] = (c[r.status] || 0) + 1 }); c[''] = (data.results || data).length; setCounts(c) })
+      .catch(() => {})
   }
   useEffect(() => { load() }, [tab]) // eslint-disable-line
 
-  const act = async (id, fn) => { setBusy(id); setError(''); try { await fn(); load() } catch (err) { setError(actErr(err)) } finally { setBusy(null) } }
+  const act = async (id, fn) => {
+    setBusy(id); setError('')
+    try { await fn(); load() } catch (err) { const m = actErr(err); load(true); setError(m) } finally { setBusy(null) }
+  }
   const setStatus = (r, s) => act(r.id, () => reviewsApi.adminSetStatus(r.id, s))
   const save = async (e) => {
     e.preventDefault(); setBusy('save'); setError('')
     try {
       await reviewsApi.adminUpdate(editor.id, { name: editor.name, rating: editor.rating, comment: editor.comment })
       setEditor(null); load()
-    } catch (err) { setError(actErr(err)) } finally { setBusy(null) }
+    } catch (err) { setError(actErr(err)); if (err.response?.status === 404) { setEditor(null); load(true) } } finally { setBusy(null) }
   }
   const small = 'px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 transition-transform hover:-translate-y-0.5'
 
@@ -65,11 +70,11 @@ export default function AdminReviewsPage() {
       {error && (
         <div role="alert" className="mb-4 p-3 rounded-lg bg-accent-red/10 text-accent-red text-sm flex items-center justify-between gap-3 flex-wrap">
           <span>{error}</span>
-          <button onClick={load} className="px-3 py-1.5 rounded-lg bg-accent-red text-white text-xs font-bold">Try again</button>
+          <button onClick={() => load()} className="px-3 py-1.5 rounded-lg bg-accent-red text-white text-xs font-bold">Try again</button>
         </div>
       )}
-      <div className="flex gap-2 mb-2 flex-wrap">
-        {TABS.map(([v, l]) => <button key={v} onClick={() => setTab(v)} className={`px-3.5 py-1.5 rounded-btn text-sm font-bold ${tab === v ? 'bg-accent-blue text-white' : 'bg-bg-alt text-text-2'}`}>{l}{v && counts[v] ? ` (${counts[v]})` : ''}</button>)}
+      <div className="flex gap-2 mb-2 flex-wrap" role="tablist">
+        {TABS.map(([v, l]) => <button key={v} role="tab" aria-selected={tab === v} onClick={() => setTab(v)} className={`px-3.5 py-1.5 rounded-btn text-sm font-bold ${tab === v ? 'bg-accent-blue text-white' : 'bg-bg-alt text-text-2'}`}>{l}{counts[v] ? ` (${counts[v]})` : ''}</button>)}
       </div>
       <p className="text-xs text-text-3 mb-4">Only <strong>Approved</strong> reviews appear on the website. <strong>Hidden</strong> reviews are kept but not shown; you can show them again any time.</p>
       <div className="space-y-3">

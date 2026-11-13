@@ -8,6 +8,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core import edit_tokens
 from apps.core.permissions import IsAdmin
 from apps.core.throttles import ReviewThrottle
 from apps.products.models import Product, ProductReview
@@ -28,7 +29,7 @@ class ProductReviewsView(APIView):
     """
     GET  /api/v1/products/<id>/reviews/  -> approved reviews + rating summary (public)
     POST /api/v1/products/<id>/reviews/  -> submit a review; stored 'pending' — ONLY the admin decides what is published.
-                                            The reviewer is never shown the status of their review (public, throttled)
+                                            Returns a private `edit_token` so the reviewer can edit / withdraw it later.
     """
     permission_classes = [AllowAny]
 
@@ -52,14 +53,13 @@ class ProductReviewsView(APIView):
         if ProductReview.objects.filter(product=product, ip_hash=ip, created_at__gte=timezone.now() - timedelta(hours=24)).exists():
             return Response({'detail': 'You have already sent a review for this product recently. Thank you!'},
                             status=status.HTTP_400_BAD_REQUEST)
-        ProductReview.objects.create(product=product, name=d['name'], rating=d['rating'], comment=d['comment'], ip_hash=ip)
-        return Response(ok, status=status.HTTP_201_CREATED)
+        r = ProductReview.objects.create(product=product, name=d['name'], rating=d['rating'], comment=d['comment'], ip_hash=ip)
+        return Response({**ok, 'edit_token': edit_tokens.make('product', r.pk)}, status=status.HTTP_201_CREATED)
 
 
 class RecentReviewsView(APIView):
     """
     GET /api/v1/reviews/recent/  -> { summary, results } for APPROVED reviews of ALL products (public, read-only).
-    Feeds the "Product reviews" tab on the public Reviews page (frontend: communityApi.recentProductReviews).
     """
     permission_classes = [AllowAny]
 
@@ -78,7 +78,7 @@ class AdminReviewListView(generics.ListAPIView):
 
 
 class AdminReviewDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """PATCH {status} to approve/reject, PATCH {name, rating, comment} to edit, DELETE to remove."""
+    """PATCH {status} to approve/hide/reject, PATCH {name, rating, comment} to edit, DELETE to remove."""
     queryset = ProductReview.objects.select_related('product')
     serializer_class = ReviewAdminSerializer
     permission_classes = [IsAdmin]

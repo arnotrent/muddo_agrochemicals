@@ -14,6 +14,7 @@ DEFAULT_RATES = {
     'contact': '5/min',
     'track': '20/min',
     'recovery': '6/hour',
+    'otp': '10/min',
 }
 
 
@@ -36,3 +37,4 @@ class TestimonialThrottle(_PerClientThrottle): scope = 'testimonial'
 class ContactThrottle(_PerClientThrottle): scope = 'contact'
 class TrackThrottle(_PerClientThrottle): scope = 'track'
 class RecoveryThrottle(_PerClientThrottle): scope = 'recovery'
+class OtpThrottle(_PerClientThrottle): scope = 'otp'

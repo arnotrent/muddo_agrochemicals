@@ -8,8 +8,9 @@ class Testimonial(models.Model):
     """
     A customer review of Muddo Agro / its products shown on the website.
     Public submissions start 'pending' and are never shown until an admin approves them.
+    'hidden' (migration testimonials.0002) = approved earlier, kept but not shown.
     """
-    STATUS = [('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')]
+    STATUS = [('pending', 'Pending'), ('approved', 'Approved'), ('hidden', 'Hidden'), ('rejected', 'Rejected')]
     SOURCE = [('public', 'Public form'), ('admin', 'Added by admin')]
 
     name = models.CharField(max_length=80)

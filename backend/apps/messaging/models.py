@@ -47,10 +47,7 @@ class Message(models.Model):
 
 
 class BroadcastRead(models.Model):
-    """
-    Per-reader "seen" marker for team broadcasts. (One shared `read` flag meant the first person to open
-    the Team chat cleared everyone else's unread badge.)
-    """
+    """Per-reader "seen" marker for team broadcasts."""
     message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='broadcast_reads')
     reader_id = models.IntegerField()
     reader_role = models.CharField(max_length=10)
@@ -83,3 +80,19 @@ class MessageAttachment(models.Model):
     @property
     def storage_path(self):
         return self.file.name
+
+
+class StoredFile(models.Model):
+    """
+    Bytes of a chat attachment, kept in the database so redeploys cannot wipe them.
+    messaging/storage.py (DatabaseStorage) imports this class on every read / write / exists / delete. While it was
+    missing, every attachment upload failed (500) and every download became a 404 "not found".
+    Table created by migration messaging.0006_storedfile.
+    """
+    name = models.CharField(max_length=255, unique=True)
+    data = models.BinaryField()
+    size = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name

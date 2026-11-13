@@ -57,6 +57,17 @@ class EnquiryReply(models.Model):
 class NewsletterSubscriber(models.Model):
     email = models.EmailField(unique=True); name = models.CharField(max_length=200, blank=True)
     active = models.BooleanField(default=True); subscribed_at = models.DateTimeField(auto_now_add=True)
+    # Consent trail (columns created by migration core.0008_newsletter_consent).
+    consent_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    unsubscribed_at = models.DateTimeField(null=True, blank=True)
+    source = models.CharField(max_length=30, blank=True, default='')
+
+    @property
+    def status(self):
+        if self.active:
+            return 'subscribed'
+        return 'unsubscribed' if self.unsubscribed_at else 'pending'
 
     def __str__(self):
         return self.email
@@ -119,7 +130,7 @@ class FAQ(models.Model):
 
 
 class StoredFile(models.Model):
-    """An uploaded picture kept IN THE DATABASE so it survives Render redeploys (see apps/core/db_storage.py)."""
+    """Legacy picture store (migration core.0006). Kept so the migration history matches; new pictures use MediaFile."""
     name = models.CharField(max_length=255, unique=True)
     content = models.BinaryField()
     content_type = models.CharField(max_length=120, default='application/octet-stream')
@@ -128,3 +139,43 @@ class StoredFile(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class MediaFile(models.Model):
+    """
+    Bytes of an uploaded picture (product / leader / testimonial / avatar), kept in the database so redeploys cannot
+    wipe them. Table created by migration core.0007_mediafile.
+    media_storage.DatabaseMediaStorage and media_views.serve_media import this class: while it was missing from this
+    file, every upload failed (500) and every /media/... picture was "not found".
+    """
+    name = models.CharField(max_length=300, unique=True)
+    data = models.BinaryField()
+    content_type = models.CharField(max_length=100, blank=True)
+    size = models.BigIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+class TwoFactor(models.Model):
+    """
+    Authenticator-app (TOTP, RFC 6238) second factor for staff accounts. Required to change the admin password, reset an
+    agent's password, change the recovery e-mail, or finish an e-mailed password reset.
+    * secret ........... base32 TOTP secret (database access = trust boundary; keep DB credentials private)
+    * last_used_step ... a code can never be used twice (replay protection)
+    * backup_codes ..... HMAC-SHA256 hashes of one-time recovery codes (plain codes are shown once, never stored)
+    * failed_attempts / locked_until ... 5 wrong codes lock verification for 15 minutes
+    """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='two_factor')
+    secret = models.CharField(max_length=64)
+    enabled = models.BooleanField(default=False)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    last_used_step = models.BigIntegerField(default=0)
+    backup_codes = models.JSONField(default=list, blank=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f'2FA for {self.user.username} ({"on" if self.enabled else "off"})'

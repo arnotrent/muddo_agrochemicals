@@ -21,6 +21,10 @@ class Distributor(models.Model):
     email    = models.EmailField(blank=True)
     lat      = models.FloatField(default=0.0)
     lng      = models.FloatField(default=0.0)
+    # Google Places id when the admin picked a real Google place ('' for a plain pin). Column added by migration 0005.
+    # DistributorSerializer lists 'place_id'; while this field was missing from the model, DRF raised
+    # ImproperlyConfigured and EVERY /distributors/ request (Find a Store, home counter, search, admin) returned 500.
+    place_id = models.CharField(max_length=300, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

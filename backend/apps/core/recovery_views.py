@@ -2,14 +2,15 @@
 Account recovery.
 
   1. E-mail link   — POST /auth/password-reset/request/  (username or e-mail)
-                     GET  /auth/password-reset/validate/ (uid, token)  -> {valid}
-                     POST /auth/password-reset/confirm/  (uid, token, new_password, confirm_password)
-  2. E-mail change — POST /auth/change-email/  (logged-in; needs current password)
+                     GET  /auth/password-reset/validate/ (uid, token)  -> {valid, needs_otp}
+                     POST /auth/password-reset/confirm/  (uid, token, new_password, confirm_password, otp?)
+  2. E-mail change — POST /auth/change-email/  (logged-in; needs current password, and a 2FA code when 2FA is on)
 
 Security properties:
   * the request endpoint ALWAYS answers the same message (no account enumeration)
-  * tokens are Django's signed, single-use tokens (they stop working the moment the password
-    changes) and expire after PASSWORD_RESET_TIMEOUT (1 hour)
+  * tokens are Django's signed, single-use tokens and expire after PASSWORD_RESET_TIMEOUT (1 hour)
+  * accounts with 2FA switched on ALSO need their authenticator code to finish a reset, so access to the mailbox alone
+    can no longer take over an administrator account
   * the new password goes through Django's password validators
   * after a reset every outstanding refresh token of that user is blacklisted (all sessions end)
   * throttled per client; plus a per-account cool-down so one inbox cannot be flooded
@@ -32,10 +33,12 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.core import twofactor as tfa
 from apps.core.throttles import AuthThrottle, RecoveryThrottle
 
 User = get_user_model()
 logger = logging.getLogger('django.request')
+audit = logging.getLogger('muddo.security')
 
 GENERIC = ('If an account matches what you entered and has an e-mail address on file, a reset link has '
            'been sent. The link works for 1 hour. If nothing arrives, check spam or use another recovery option below.')
@@ -96,7 +99,8 @@ def _user_from(uid, token):
 @permission_classes([AllowAny])
 @throttle_classes([AuthThrottle])
 def password_reset_validate_view(request):
-    return Response({'valid': _user_from(request.GET.get('uid'), request.GET.get('token')) is not None})
+    user = _user_from(request.GET.get('uid'), request.GET.get('token'))
+    return Response({'valid': user is not None, 'needs_otp': bool(user and tfa.enabled_for(user))})
 
 
 @api_view(['POST'])
@@ -107,6 +111,9 @@ def password_reset_confirm_view(request):
     if not user:
         return Response({'detail': 'This reset link is invalid or has expired. Please request a new one.'},
                         status=status.HTTP_400_BAD_REQUEST)
+    blocked = tfa.gate(user, request.data.get('otp'), enforce_setup=False)   # 2FA accounts need their code too
+    if blocked:
+        return blocked
     new, confirm = request.data.get('new_password') or '', request.data.get('confirm_password') or ''
     if new != confirm:
         return Response({'detail': 'The two passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -117,6 +124,7 @@ def password_reset_confirm_view(request):
     user.set_password(new)
     user.save(update_fields=['password'])
     _blacklist_all_sessions(user)
+    audit.warning('Password reset by e-mail link for %s', user.username)
     return Response({'detail': 'Password updated. You can now sign in with your new password.'})
 
 
@@ -128,10 +136,14 @@ def change_email_view(request):
     email = (request.data.get('email') or '').strip().lower()
     if not request.user.check_password(request.data.get('password') or ''):
         return Response({'detail': 'Current password is incorrect.'}, status=status.HTTP_400_BAD_REQUEST)
+    blocked = tfa.gate(request.user, request.data.get('otp'), enforce_setup=False)
+    if blocked:
+        return blocked
     try:
         validate_email(email)
     except DjangoValidationError:
         return Response({'detail': 'Enter a valid e-mail address.'}, status=status.HTTP_400_BAD_REQUEST)
     request.user.email = email
     request.user.save(update_fields=['email'])
+    audit.warning('Recovery e-mail changed for %s', request.user.username)
     return Response({'detail': 'Recovery e-mail saved.', 'email': email})
